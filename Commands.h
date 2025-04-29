@@ -122,9 +122,9 @@ public:
 
 
 class ChangeDirCommand : public BuiltInCommand {
-    // TODO: Add your data members public:
     ChangeDirCommand(const char *cmd_line, char **plastPwd);
-
+    private:
+        char **plastPwd;
     virtual ~ChangeDirCommand() {
     }
 
@@ -276,12 +276,14 @@ class SmallShell {
 private:
     // TODO: Add your data members
     string prompt;
-
+    std::string lastWorkingDir;
+    std::string prevWorkingDir;
     SmallShell();
 
 public:
     Command *CreateCommand(const char *cmd_line);
-
+    std::string getLastDir() const;
+    void setLastDir(const std::string& dir);
     SmallShell(SmallShell const &) = delete; // disable copy ctor
     void operator=(SmallShell const &) = delete; // disable = operator
     static SmallShell &getInstance() // make SmallShell singleton

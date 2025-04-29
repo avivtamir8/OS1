@@ -103,6 +103,9 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     else if (firstWord.compare("pwd") == 0) {
       return new GetCurrDirCommand(cmd_line);
     }
+    else if (firstWord.compare("cd") == 0) {
+      return new ChPromptCommand(cmd_line);
+    }
     // else if (firstWord.compare("jobs") == 0) {
     //   return new JobsList(cmd_line);
     // }
@@ -203,8 +206,72 @@ void GetCurrDirCommand::execute() {
   }
 }
 
+std::string SmallShell::getLastDir() const {
+	return lastWorkingDir;
+}
+void SmallShell::setLastDir(const std::string& dir) {
+	lastWorkingDir = dir;
+}
 
+void ChangeDirCommand::execute() {
+	SmallShell& shell = SmallShell::getInstance();
 
+	// No arguments: Do nothing
+	if (args.size() == 1) {
+		return;
+	}
+
+	// Too many arguments: Print error and return
+	if (args.size() > 2) {
+		std::cerr << "smash error: cd: too many arguments" << std::endl;
+		return;
+	}
+
+	const std::string& targetDir = args[1];
+	char* currentDir = getcwd(nullptr, 0); // Get the current working directory
+	if (!currentDir) {
+		perror("smash error: getcwd failed");
+		return;
+	}
+
+	// Handle "cd -": Change to the last working directory
+	if (targetDir == "-") {
+		if (shell.getLastDir().empty()) {
+			std::cerr << "smash error: cd: OLDPWD not set" << std::endl;
+			free(currentDir);
+			return;
+		}
+		if (chdir(shell.getLastDir().c_str()) == -1) {
+			perror("smash error: chdir failed");
+		}
+		else {
+			shell.setLastDir(currentDir); // Update lastWorkingDir with the previous directory
+		}
+		free(currentDir);
+		return;
+	}
+
+	// Handle "cd ..": Move up one directory
+	if (targetDir == "..") {
+		if (chdir("..") == -1) {
+			perror("smash error: chdir failed");
+		}
+		else {
+			shell.setLastDir(currentDir); // Update lastWorkingDir
+		}
+		free(currentDir);
+		return;
+	}
+
+	// Handle regular path: Change directory
+	if (chdir(targetDir.c_str()) == -1) {
+		perror("smash error: chdir failed");
+	}
+	else {
+		shell.setLastDir(currentDir); // Update lastWorkingDir
+	}
+	free(currentDir);
+}
 
 
 /*
