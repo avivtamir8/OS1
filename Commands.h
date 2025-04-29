@@ -133,7 +133,8 @@ class ChangeDirCommand : public BuiltInCommand {
 
 class GetCurrDirCommand : public BuiltInCommand {
 public:
-    GetCurrDirCommand(const char *cmd_line);
+    GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+    }
 
     virtual ~GetCurrDirCommand() {
     }
@@ -141,9 +142,11 @@ public:
     void execute() override;
 };
 
+using namespace std;
 class ShowPidCommand : public BuiltInCommand {
 public:
-    ShowPidCommand(const char *cmd_line);
+    ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+    }
 
     virtual ~ShowPidCommand() {
     }

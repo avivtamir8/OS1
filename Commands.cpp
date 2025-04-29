@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <unistd.h>
 #include <string.h>
 #include <iostream>
@@ -96,12 +97,12 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     if (firstWord.compare("chprompt") == 0) {
       return new ChPromptCommand(cmd_line);
     }
-    // else if (firstWord.compare("showpid") == 0) {
-    //   return new ShowPidCommand(cmd_line);
-    // }
-    // else if (firstWord.compare("pwd") == 0) {
-    //   return new GetCurrDirCommand(cmd_line);
-    // }
+    else if (firstWord.compare("showpid") == 0) {
+      return new ShowPidCommand(cmd_line);
+    }
+    else if (firstWord.compare("pwd") == 0) {
+      return new GetCurrDirCommand(cmd_line);
+    }
     // else if (firstWord.compare("jobs") == 0) {
     //   return new JobsList(cmd_line);
     // }
@@ -186,6 +187,24 @@ void ChPromptCommand::execute() {
     SmallShell::getInstance().setPrompt("smash");
   }
 }
+
+void ShowPidCommand::execute() {
+  // Print the process ID of the current shell
+  cout << "smash pid is " << getpid() << endl;
+}
+
+void GetCurrDirCommand::execute() {
+  // Get the current working directory
+  char cwd[PATH_MAX];
+  if (getcwd(cwd, sizeof(cwd)) != nullptr) {
+    cout << cwd << endl;
+  } else {
+    perror("getcwd() error");
+  }
+}
+
+
+
 
 
 /*
