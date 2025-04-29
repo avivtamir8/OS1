@@ -104,7 +104,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
       return new GetCurrDirCommand(cmd_line);
     }
     else if (firstWord.compare("cd") == 0) {
-      return new ChPromptCommand(cmd_line);
+      return new ChangeDirCommand(cmd_line);
     }
     // else if (firstWord.compare("jobs") == 0) {
     //   return new JobsList(cmd_line);

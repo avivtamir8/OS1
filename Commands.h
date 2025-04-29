@@ -122,14 +122,12 @@ public:
 
 
 class ChangeDirCommand : public BuiltInCommand {
-    ChangeDirCommand(const char *cmd_line, char **plastPwd);
-    private:
-        char **plastPwd;
-    virtual ~ChangeDirCommand() {
-    }
-
+public:
+    ChangeDirCommand(const char* cmd_line);
+    ~ChangeDirCommand();
     void execute() override;
 };
+
 
 class GetCurrDirCommand : public BuiltInCommand {
 public:
