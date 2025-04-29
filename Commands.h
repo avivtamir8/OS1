@@ -3,6 +3,7 @@
 #define SMASH_COMMAND_H_
 #include <string.h>
 #include <vector>
+#include <map>
 
 #define COMMAND_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
@@ -13,12 +14,13 @@
 using namespace std;
 class Command {
     // TODO: Add your data members
-protected:
+    protected:
     string cmd_line;
     vector<string> args; // +1 for NULL termination
     bool is_background;
+    std::string alias;
 
-public:
+    public:
     Command(const char *cmd_line);
 
     virtual ~Command() = default;
@@ -28,6 +30,11 @@ public:
     //virtual void prepare();
     //virtual void cleanup();
     // TODO: Add your extra methods if needed
+
+    std::string getAlias() const;
+    void setAlias(const std::string& aliasCommand);
+
+
 };
 
 
@@ -152,6 +159,7 @@ public:
     void execute() override;
 };
 
+
 class JobsList;
 
 class QuitCommand : public BuiltInCommand {
@@ -230,11 +238,12 @@ public:
 };
 
 class AliasCommand : public BuiltInCommand {
+private:
+std::map<std::string, std::string>& aliasMap;
 public:
-    AliasCommand(const char *cmd_line);
-
-    virtual ~AliasCommand() {
-    }
+    AliasCommand(const char* cmd_line, std::map<std::string, std::string>& aliasMap)
+	: BuiltInCommand(cmd_line), aliasMap(aliasMap) {}
+    virtual ~AliasCommand() {}
 
     void execute() override;
 };
@@ -276,6 +285,7 @@ private:
     string prompt;
     std::string lastWorkingDir;
     std::string prevWorkingDir;
+    map<string, string> aliasMap;
     SmallShell();
 
 public:
@@ -304,6 +314,10 @@ public:
     string getPrompt() const {
         return prompt;
     }
+    void setAlias(const std::string& aliasName, const std::string& aliasCommand);
+    void removeAlias(const std::string& aliasName);
+    std::string getAlias(const std::string& aliasName) const;
+    void printAliases() const;
 };
 
 #endif //SMASH_COMMAND_H_

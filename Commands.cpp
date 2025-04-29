@@ -6,6 +6,9 @@
 #include <sstream>
 #include <sys/wait.h>
 #include <iomanip>
+#include <regex>
+#include <string>
+#include <set>
 #include "Commands.h"
 
 using namespace std;
@@ -90,9 +93,27 @@ SmallShell::~SmallShell() {
 */
 Command *SmallShell::CreateCommand(const char *cmd_line) {
     // For example:
-  
+
+    
     string cmd_s = _trim(string(cmd_line));
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+
+    // Handle alias expansion
+	  auto aliasIt = aliasMap.find(firstWord);
+	  if (aliasIt != aliasMap.end()) {
+		std::string expandedCommand = aliasIt->second;
+
+		// Append remaining arguments
+		std::string remainingArgs;
+    std::istringstream iss(_trim(string(cmd_line)).c_str());
+		getline(iss, remainingArgs);
+		if (!remainingArgs.empty()) {
+			expandedCommand += " " + _trim(remainingArgs);
+		}
+
+		cmd_s = _trim(expandedCommand);
+	}
+
 
     if (firstWord.compare("chprompt") == 0) {
       return new ChPromptCommand(cmd_line);
@@ -121,9 +142,9 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     // else if (firstWord.compare("quit") == 0) {
     //   return new QuitCommand(cmd_line, jobs);
     // }
-    // else if (firstWord.compare("alias") == 0) {
-    //   return new AliasCommand(cmd_line);
-    // }
+    else if (firstWord.compare("alias") == 0) {
+      return new AliasCommand(cmd_line, aliasMap);
+    }
     // else if (firstWord.compare("unalias") == 0) {
     //   return new UnAliasCommand(cmd_line);
     // }
@@ -176,6 +197,8 @@ Command::Command(const char *cmd_line) : cmd_line(cmd_line), is_background(false
         _removeBackgroundSign(&args.back()[0]);
     }
 }
+std::string Command::getAlias() const { return alias; }
+void Command::setAlias(const std::string& aliasCommand) { alias = aliasCommand; }
 
 
 /*
@@ -271,6 +294,86 @@ void ChangeDirCommand::execute() {
 		shell.setLastDir(currentDir); // Update lastWorkingDir
 	}
 	free(currentDir);
+}
+
+// AliasCommand Class
+
+void AliasCommand::execute() {
+	// Trim the command line to handle any spaces
+	std::string commandLine = _trim(cmd_line);
+
+	// Case 1: If the command is exactly "alias" with no arguments
+	if (commandLine == "alias") {
+		// Print all aliases in the map
+		for (const auto& alias : aliasMap) {
+			std::cout << alias.first << "='" << alias.second << "'" << std::endl;
+		}
+		return; // Exit after printing
+	}
+
+	// Case 2: Handle alias creation (alias <name>='<command>')
+	size_t equalPos = commandLine.find('=');
+	if (equalPos == std::string::npos || equalPos < 6) { // Missing '=' or alias name
+		std::cerr << "smash error: alias: invalid alias format" << std::endl;
+		return;
+	}
+
+	// Extract the alias name and command
+	std::string aliasName = _trim(commandLine.substr(6, equalPos - 6));
+	std::string aliasCommand = _trim(commandLine.substr(equalPos + 1));
+
+	// Validate alias name format
+	if (!std::regex_match(aliasName, std::regex("^[a-zA-Z0-9_]+$"))) {
+		std::cerr << "smash error: alias: invalid alias format" << std::endl;
+		return;
+	}
+
+	// Check for proper quotes around the alias command
+	if (aliasCommand.length() < 2 || aliasCommand.front() != '\'' || aliasCommand.back() != '\'') {
+		std::cerr << "smash error: alias: invalid alias format" << std::endl;
+		return;
+	}
+
+	// Remove surrounding quotes from the command
+	aliasCommand = aliasCommand.substr(1, aliasCommand.length() - 2);
+
+	// Check for reserved keywords
+	static const std::set<std::string> reservedKeywords = {
+		"quit", "fg", "bg", "jobs", "kill", "cd", "listdir", "chprompt", "alias", "unalias", "pwd", "showpid"
+	};
+
+	if (reservedKeywords.count(aliasName) || aliasMap.count(aliasName)) {
+		std::cerr << "smash error: alias: " << aliasName << " already exists or is a reserved command" << std::endl;
+		return;
+	}
+
+	// Add the alias to the map
+	aliasMap[aliasName] = aliasCommand;
+}
+
+void SmallShell::setAlias(const std::string& aliasName, const std::string& aliasCommand) {
+	if (aliasCommand == aliasName) {
+		std::cerr << "smash error: alias: alias loop detected" << std::endl;
+		return;
+	}
+	aliasMap[aliasName] = aliasCommand;
+}
+void SmallShell::removeAlias(const std::string& aliasName) {
+	if (aliasMap.erase(aliasName) == 0) {
+		std::cerr << "smash error: unalias: alias \"" << aliasName << "\" does not exist" << std::endl;
+	}
+}
+std::string SmallShell::getAlias(const std::string& aliasName) const {
+	auto it = aliasMap.find(aliasName);
+	if (it != aliasMap.end()) {
+		return it->second;
+	}
+	return ""; // Alias not found
+}
+void SmallShell::printAliases() const {
+	for (const auto& alias : aliasMap) {
+		std::cout << alias.first << " -> " << alias.second << std::endl;
+	}
 }
 
 

@@ -46,6 +46,13 @@
         "utility": "cpp",
         "numeric": "cpp",
         "deque": "cpp",
-        "*.tcc": "cpp"
+        "*.tcc": "cpp",
+        "cstdarg": "cpp",
+        "map": "cpp",
+        "fstream": "cpp",
+        "bitset": "cpp",
+        "cstring": "cpp",
+        "regex": "cpp",
+        "set": "cpp"
     }
 }
