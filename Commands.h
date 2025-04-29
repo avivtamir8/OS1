@@ -1,7 +1,7 @@
 // Ver: 10-4-2025
 #ifndef SMASH_COMMAND_H_
 #define SMASH_COMMAND_H_
-
+#include <string.h>
 #include <vector>
 
 #define COMMAND_MAX_LENGTH (200)
