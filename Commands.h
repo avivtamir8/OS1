@@ -123,8 +123,8 @@ public:
 
 class ChangeDirCommand : public BuiltInCommand {
 public:
-    ChangeDirCommand(const char* cmd_line);
-    ~ChangeDirCommand();
+    ChangeDirCommand(const char* cmd_line) : BuiltInCommand(cmd_line) {}
+    virtual ~ChangeDirCommand() {}
     void execute() override;
 };
 

@@ -45,6 +45,7 @@
         "random": "cpp",
         "utility": "cpp",
         "numeric": "cpp",
-        "deque": "cpp"
+        "deque": "cpp",
+        "*.tcc": "cpp"
     }
 }
