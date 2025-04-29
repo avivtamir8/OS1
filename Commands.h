@@ -7,12 +7,20 @@
 #define COMMAND_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 
+/*
+* Command class Definition
+*/
 class Command {
     // TODO: Add your data members
+protected:
+    string cmd_line;
+    vector<string> args; // +1 for NULL termination
+    bool is_background;
+
 public:
     Command(const char *cmd_line);
 
-    virtual ~Command();
+    virtual ~Command() = default;
 
     virtual void execute() = 0;
 
@@ -21,12 +29,15 @@ public:
     // TODO: Add your extra methods if needed
 };
 
+
+/*
+* Command Family Definitions
+*/
 class BuiltInCommand : public Command {
 public:
-    BuiltInCommand(const char *cmd_line);
+    BuiltInCommand(const char *cmd_line) : Command(cmd_line) {};
 
-    virtual ~BuiltInCommand() {
-    }
+    virtual ~BuiltInCommand() = default;
 };
 
 class ExternalCommand : public Command {
@@ -92,6 +103,22 @@ public:
 
     void execute() override;
 };
+
+
+/*
+* BuiltIn Commands Definition
+*/
+class ChPromptCommand : public BuiltInCommand {
+public:
+    ChPromptCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+    virtual ~ChPromptCommand() {
+    }
+
+    void execute() override;
+};
+
+
 
 class ChangeDirCommand : public BuiltInCommand {
     // TODO: Add your data members public:
@@ -240,9 +267,12 @@ public:
     void execute() override;
 };
 
+using namespace std;
 class SmallShell {
 private:
     // TODO: Add your data members
+    string prompt;
+
     SmallShell();
 
 public:
@@ -262,6 +292,14 @@ public:
     void executeCommand(const char *cmd_line);
 
     // TODO: add extra methods as needed
+
+    void setPrompt(const string &newPrompt) {
+        prompt = newPrompt;
+    }
+
+    string getPrompt() const {
+        return prompt;
+    }
 };
 
 #endif //SMASH_COMMAND_H_

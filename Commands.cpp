@@ -76,7 +76,7 @@ void _removeBackgroundSign(char *cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h 
 
-SmallShell::SmallShell() {
+SmallShell::SmallShell() : prompt("smash") {
 // TODO: add your implementation
 }
 
@@ -89,22 +89,52 @@ SmallShell::~SmallShell() {
 */
 Command *SmallShell::CreateCommand(const char *cmd_line) {
     // For example:
-  /*
-  string cmd_s = _trim(string(cmd_line));
-  string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+  
+    string cmd_s = _trim(string(cmd_line));
+    string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
 
-  if (firstWord.compare("pwd") == 0) {
-    return new GetCurrDirCommand(cmd_line);
-  }
-  else if (firstWord.compare("showpid") == 0) {
-    return new ShowPidCommand(cmd_line);
-  }
-  else if ...
-  .....
-  else {
-    return new ExternalCommand(cmd_line);
-  }
-  */
+    if (firstWord.compare("chprompt") == 0) {
+      return new ChPromptCommand(cmd_line);
+    }
+    else if (firstWord.compare("showpid") == 0) {
+      return new ShowPidCommand(cmd_line);
+    }
+    else if (firstWord.compare("pwd") == 0) {
+      return new GetCurrDirCommand(cmd_line);
+    }
+    else if (firstWord.compare("jobs") == 0) {
+      return new JobsList(cmd_line);
+    }
+    else if (firstWord.compare("kill") == 0) {
+      return new KillCommand(cmd_line);
+    }
+    else if (firstWord.compare("fg") == 0) {
+      return new ForegroundCommand(cmd_line);
+    }
+    else if (firstWord.compare("bg") == 0) {
+      return new BackgroundCommand(cmd_line);
+    }
+    else if (firstWord.compare("quit") == 0) {
+      return new QuitCommand(cmd_line, jobs);
+    }
+    else if (firstWord.compare("alias") == 0) {
+      return new AliasCommand(cmd_line);
+    }
+    else if (firstWord.compare("unalias") == 0) {
+      return new UnAliasCommand(cmd_line);
+    }
+    else if (firstWord.compare("setenv") == 0) {
+      return new SetEnvCommand(cmd_line);
+    }
+    else if (firstWord.compare("unsetenv") == 0) {
+      return new UnSetEnvCommand(cmd_line);
+    }
+    else if (firstWord.compare("watchproc") == 0) {
+      return new WatchProcCommand(cmd_line);
+    }
+    else {
+      return new ExternalCommand(cmd_line);
+    }
     return nullptr;
 }
 
@@ -114,4 +144,61 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // Command* cmd = CreateCommand(cmd_line);
     // cmd->execute();
     // Please note that you must fork smash process for some commands (e.g., external commands....)
+
+    Command *cmd = CreateCommand(cmd_line);
+    cmd->execute();
+    delete cmd; // Free the command object after execution
 }
+
+/*
+* Command class methods
+*/
+Command::Command(const char *cmd_line) : cmd_line(cmd_line), is_background(false) {
+    // Parse the command line into arguments
+    char *raw_args[COMMAND_MAX_ARGS + 1]; // Temporary array for parsing
+    int argsCount = _parseCommandLine(cmd_line, raw_args);
+
+    // Convert parsed arguments to std::string and store in args vector
+    for (int i = 0; i < argsCount; ++i) {
+        args.push_back(std::string(raw_args[i]));
+        free(raw_args[i]); // Free allocated memory
+    }
+
+    // Check if the command is a background command
+    is_background = _isBackgroundComamnd(cmd_line);
+
+    // Remove the background sign if present
+    if (is_background && !args.empty()) {
+        _removeBackgroundSign(&args.back()[0]);
+    }
+}
+
+
+/*
+* BuiltInCommand class methods
+*/
+void ChPromptCommand::execute() {
+  if (args.size() > 1) {
+    // Set the new prompt to the first argument after the command
+    SmallShell::getInstance().setPrompt(args[1]);
+  } else {
+    // Reset to default prompt "smash"
+    SmallShell::getInstance().setPrompt("smash");
+  }
+}
+
+
+/*
+* ExternalCommand class methods
+*/
+
+/*
+ * RedirectionCommand class methods 
+ */
+
+
+
+
+
+
+
