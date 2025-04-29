@@ -96,45 +96,45 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     if (firstWord.compare("chprompt") == 0) {
       return new ChPromptCommand(cmd_line);
     }
-    else if (firstWord.compare("showpid") == 0) {
-      return new ShowPidCommand(cmd_line);
-    }
-    else if (firstWord.compare("pwd") == 0) {
-      return new GetCurrDirCommand(cmd_line);
-    }
-    else if (firstWord.compare("jobs") == 0) {
-      return new JobsList(cmd_line);
-    }
-    else if (firstWord.compare("kill") == 0) {
-      return new KillCommand(cmd_line);
-    }
-    else if (firstWord.compare("fg") == 0) {
-      return new ForegroundCommand(cmd_line);
-    }
-    else if (firstWord.compare("bg") == 0) {
-      return new BackgroundCommand(cmd_line);
-    }
-    else if (firstWord.compare("quit") == 0) {
-      return new QuitCommand(cmd_line, jobs);
-    }
-    else if (firstWord.compare("alias") == 0) {
-      return new AliasCommand(cmd_line);
-    }
-    else if (firstWord.compare("unalias") == 0) {
-      return new UnAliasCommand(cmd_line);
-    }
-    else if (firstWord.compare("setenv") == 0) {
-      return new SetEnvCommand(cmd_line);
-    }
-    else if (firstWord.compare("unsetenv") == 0) {
-      return new UnSetEnvCommand(cmd_line);
-    }
-    else if (firstWord.compare("watchproc") == 0) {
-      return new WatchProcCommand(cmd_line);
-    }
-    else {
-      return new ExternalCommand(cmd_line);
-    }
+    // else if (firstWord.compare("showpid") == 0) {
+    //   return new ShowPidCommand(cmd_line);
+    // }
+    // else if (firstWord.compare("pwd") == 0) {
+    //   return new GetCurrDirCommand(cmd_line);
+    // }
+    // else if (firstWord.compare("jobs") == 0) {
+    //   return new JobsList(cmd_line);
+    // }
+    // else if (firstWord.compare("kill") == 0) {
+    //   return new KillCommand(cmd_line);
+    // }
+    // else if (firstWord.compare("fg") == 0) {
+    //   return new ForegroundCommand(cmd_line);
+    // }
+    // else if (firstWord.compare("bg") == 0) {
+    //   return new BackgroundCommand(cmd_line);
+    // }
+    // else if (firstWord.compare("quit") == 0) {
+    //   return new QuitCommand(cmd_line, jobs);
+    // }
+    // else if (firstWord.compare("alias") == 0) {
+    //   return new AliasCommand(cmd_line);
+    // }
+    // else if (firstWord.compare("unalias") == 0) {
+    //   return new UnAliasCommand(cmd_line);
+    // }
+    // else if (firstWord.compare("setenv") == 0) {
+    //   return new SetEnvCommand(cmd_line);
+    // }
+    // else if (firstWord.compare("unsetenv") == 0) {
+    //   return new UnSetEnvCommand(cmd_line);
+    // }
+    // else if (firstWord.compare("watchproc") == 0) {
+    //   return new WatchProcCommand(cmd_line);
+    // }
+    // else {
+    //   return new ExternalCommand(cmd_line);
+    // }
     return nullptr;
 }
 

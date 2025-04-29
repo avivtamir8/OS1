@@ -10,6 +10,7 @@
 /*
 * Command class Definition
 */
+using namespace std;
 class Command {
     // TODO: Add your data members
 protected:
