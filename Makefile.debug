@@ -1,0 +1,22 @@
+# Compiler and flags
+COMPILER := g++
+COMPILER_FLAGS := --std=c++11 -Wall -g
+
+# Source files and object files
+SRCS := Commands.cpp signals.cpp smash.cpp
+OBJS := $(SRCS:.cpp=.o)
+
+# Output binary
+SMASH_BIN := smash
+
+# Build target
+all: $(SMASH_BIN)
+
+$(SMASH_BIN): $(OBJS)
+	$(COMPILER) $(COMPILER_FLAGS) $^ -o $@
+
+%.o: %.cpp %.h
+	$(COMPILER) $(COMPILER_FLAGS) -c $< -o $@
+
+clean:
+	rm -rf $(SMASH_BIN) $(OBJS)

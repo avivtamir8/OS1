@@ -1,0 +1,25 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Smash",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/smash", // Path to your compiled executable
+            "args": [], // Arguments to pass to your program (leave empty for now)
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}", // Set the current working directory
+            "environment": [],
+            "externalConsole": false, // Use the VS Code integrated terminal
+            "MIMode": "gdb", // Use GDB as the debugger
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "build" // Run the "build" task before debugging
+        }
+    ]
+}
