@@ -115,6 +115,8 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         return new UnAliasCommand(cmd_s.c_str(), aliasMap);
     } else if (firstWord == "kill") {
         return new KillCommand(cmd_s.c_str(), jobs);
+    } else if (firstWord == "quit") {
+        return new QuitCommand(cmd_s.c_str(), jobs);
     } else if (firstWord == "fg") {
         return new ForegroundCommand(cmd_s.c_str(), jobs);
     } else {
@@ -465,4 +467,35 @@ void KillCommand::execute() {
 
     // Print success message
     cout << "signal number " << signum << " was sent to pid " << job->getPid() << endl;
+}
+
+// QuitCommand Class
+void QuitCommand::execute() {
+    // Check if the "kill" argument is provided
+    bool killFlag = (args.size() > 1 && args[1] == "kill");
+
+    if (killFlag) {
+        // Remove finished jobs before killing
+        jobs->removeFinishedJobs();
+
+        // Get the list of remaining jobs
+        vector<JobsList::JobEntry*> remainingJobs = jobs->getJobs();
+
+        // Print the number of jobs to be killed
+        cout << "smash: sending SIGKILL signal to " << remainingJobs.size() << " jobs:" << endl;
+
+        // Iterate through the jobs and send SIGKILL
+        for (JobsList::JobEntry* job : remainingJobs) {
+            cout << job->getPid() << ": " << job->getCmdLine() << endl;
+            if (kill(job->getPid(), SIGKILL) == -1) {
+                perror("smash error: kill failed");
+            }
+        }
+
+        // Clear the jobs list
+        jobs->clearJobs();
+    }
+
+    // Exit the shell
+    exit(0);
 }

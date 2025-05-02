@@ -155,6 +155,14 @@ public:
     bool isEmpty() const {
         return jobs.empty();
     }
+
+    vector<JobEntry*> getJobs() const { return jobs; }
+    void clearJobs() {
+        for (JobEntry* job : jobs) {
+            delete job;
+        }
+        jobs.clear();
+    }
 };
 
 /*
@@ -271,7 +279,7 @@ private:
     JobsList *jobs;
 
 public:
-    QuitCommand(const char *cmd_line, JobsList *jobs);
+    QuitCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), jobs(jobs) {}
     virtual ~QuitCommand() = default;
 
     void execute() override;
