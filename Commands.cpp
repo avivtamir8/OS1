@@ -80,48 +80,42 @@ SmallShell::~SmallShell() {
 }
 
 Command *SmallShell::CreateCommand(const char *cmd_line) {
-  // For example:
-  string cmd_s = _trim(string(cmd_line));
-  string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+    string cmd_s = _trim(string(cmd_line));
+    string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
 
-  /* check whats wrong */
-  // Handle alias expansion
-  auto aliasIt = aliasMap.find(firstWord);
-  if (aliasIt != aliasMap.end()) {
-    string expandedCommand = aliasIt->second;
+    // Handle alias expansion
+    auto aliasIt = aliasMap.find(firstWord);
+    if (aliasIt != aliasMap.end()) {
+        string expandedCommand = aliasIt->second;
 
-    // Append remaining arguments
-    string remainingArgs;
-    istringstream iss(_trim(string(cmd_line)).c_str());
-    getline(iss, remainingArgs);
-    if (!remainingArgs.empty()) {
-      expandedCommand += " " + _trim(remainingArgs);
+        // Append remaining arguments
+        string remainingArgs = cmd_s.substr(cmd_s.find_first_of(" \n") + 1);
+        if (!remainingArgs.empty()) {
+            expandedCommand += " " + _trim(remainingArgs);
+        }
+
+        // Re-assign the expanded command to cmd_s
+        cmd_s = _trim(expandedCommand);
+        firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
     }
 
-    cmd_s = _trim(expandedCommand);
-	}
-  /* check whats wrong */
-
-
-  if (firstWord == "chprompt") {
-    return new ChPromptCommand(cmd_line);
-  } else if (firstWord == "showpid") {
-    return new ShowPidCommand(cmd_line);
-  } else if (firstWord == "pwd") {
-    return new GetCurrDirCommand(cmd_line);
-  } else if (firstWord == "cd") {
-    return new ChangeDirCommand(cmd_line);
-  }  else if (firstWord == "jobs") {
-    return new JobsCommand(cmd_line, jobs);
-  } else if (firstWord == "alias") {
-    return new AliasCommand(cmd_line, aliasMap);
-  } else if (firstWord == "fg") {
-    return new ForegroundCommand(cmd_line, jobs);
-  } 
-  else {
-    return new ExternalCommand(cmd_line, jobs);
-  }
-  return nullptr;
+    if (firstWord == "chprompt") {
+        return new ChPromptCommand(cmd_s.c_str());
+    } else if (firstWord == "showpid") {
+        return new ShowPidCommand(cmd_s.c_str());
+    } else if (firstWord == "pwd") {
+        return new GetCurrDirCommand(cmd_s.c_str());
+    } else if (firstWord == "cd") {
+        return new ChangeDirCommand(cmd_s.c_str());
+    } else if (firstWord == "jobs") {
+        return new JobsCommand(cmd_s.c_str(), jobs);
+    } else if (firstWord == "alias") {
+        return new AliasCommand(cmd_s.c_str(), aliasMap);
+    } else if (firstWord == "fg") {
+        return new ForegroundCommand(cmd_s.c_str(), jobs);
+    } else {
+        return new ExternalCommand(cmd_s.c_str(), jobs);
+    }
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
@@ -273,56 +267,63 @@ void ForegroundCommand::execute() {
 // AliasCommand Class
 
 void AliasCommand::execute() {
-	// Trim the command line to handle any spaces
-	string commandLine = _trim(cmd_line);
+    // Trim the command line to handle any spaces
+    string commandLine = _trim(cmd_line);
 
-	// Case 1: If the command is exactly "alias" with no arguments
-	if (commandLine == "alias") {
-		// Print all aliases in the map
-		for (const auto& alias : aliasMap) {
-			cout << alias.first << "='" << alias.second << "'" << endl;
-		}
-		return; // Exit after printing
-	}
+    // Case 1: If the command is exactly "alias" with no arguments
+    if (commandLine == "alias") {
+        // Print all aliases in the map
+        for (const auto& alias : aliasMap) {
+            cout << alias.first << "='" << alias.second << "'" << endl;
+        }
+        return; // Exit after printing
+    }
 
-	// Case 2: Handle alias creation (alias <name>='<command>')
-	size_t equalPos = commandLine.find('=');
-	if (equalPos == string::npos || equalPos < 6) { // Missing '=' or alias name
-		cerr << "smash error: alias: invalid alias format" << endl;
-		return;
-	}
+    // Case 2: Handle alias creation (alias <name>='<command>')
+    size_t equalPos = commandLine.find('=');
+    if (equalPos == string::npos || equalPos < 6) { // Missing '=' or alias name
+        cerr << "smash error: alias: invalid alias format" << endl;
+        return;
+    }
 
-	// Extract the alias name and command
-	string aliasName = _trim(commandLine.substr(6, equalPos - 6));
-	string aliasCommand = _trim(commandLine.substr(equalPos + 1));
+    // Extract the alias name and command
+    string aliasName = _trim(commandLine.substr(6, equalPos - 6));
+    string aliasCommand = _trim(commandLine.substr(equalPos + 1));
 
-	// Validate alias name format
-	if (!regex_match(aliasName, regex("^[a-zA-Z0-9_]+$"))) {
-		cerr << "smash error: alias: invalid alias format" << endl;
-		return;
-	}
+    // Validate alias name format
+    if (!regex_match(aliasName, regex("^[a-zA-Z0-9_]+$"))) {
+        cerr << "smash error: alias: invalid alias format" << endl;
+        return;
+    }
 
-	// Check for proper quotes around the alias command
-	if (aliasCommand.length() < 2 || aliasCommand.front() != '\'' || aliasCommand.back() != '\'') {
-		cerr << "smash error: alias: invalid alias format" << endl;
-		return;
-	}
+    // Check for proper quotes around the alias command
+    if (aliasCommand.length() < 2 || aliasCommand.front() != '\'' || aliasCommand.back() != '\'') {
+        cerr << "smash error: alias: invalid alias format" << endl;
+        return;
+    }
 
-	// Remove surrounding quotes from the command
-	aliasCommand = aliasCommand.substr(1, aliasCommand.length() - 2);
+    // Remove surrounding quotes from the command
+    aliasCommand = aliasCommand.substr(1, aliasCommand.length() - 2);
 
-	// Check for reserved keywords
-	static const set<string> reservedKeywords = {
-		"quit", "fg", "bg", "jobs", "kill", "cd", "listdir", "chprompt", "alias", "unalias", "pwd", "showpid"
-	};
+    // Validate that the command exists in the system's PATH
+    string commandToCheck = aliasCommand.substr(0, aliasCommand.find(' ')); // Extract the base command
+    if (system(("command -v " + commandToCheck + " > /dev/null 2>&1").c_str()) != 0) {
+        cerr << "smash error: alias: command '" << commandToCheck << "' not found" << endl;
+        return;
+    }
 
-	if (reservedKeywords.count(aliasName) || aliasMap.count(aliasName)) {
-		cerr << "smash error: alias: " << aliasName << " already exists or is a reserved command" << endl;
-		return;
-	}
+    // Check for reserved keywords
+    static const set<string> reservedKeywords = {
+        "quit", "fg", "bg", "jobs", "kill", "cd", "listdir", "chprompt", "alias", "unalias", "pwd", "showpid"
+    };
 
-	// Add the alias to the map
-	aliasMap[aliasName] = aliasCommand;
+    if (reservedKeywords.count(aliasName) || aliasMap.count(aliasName)) {
+        cerr << "smash error: alias: " << aliasName << " already exists or is a reserved command" << endl;
+        return;
+    }
+
+    // Add the alias to the map
+    aliasMap[aliasName] = aliasCommand;
 }
 
 void SmallShell::setAlias(const string& aliasName, const string& aliasCommand) {
