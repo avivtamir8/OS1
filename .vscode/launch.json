@@ -6,8 +6,8 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/smash", // Path to your compiled executable
-            "args": [], // Arguments to pass to your program (leave empty for now)
-            "stopAtEntry": true,
+            "args": [], // Arguments to pass to your program
+            "stopAtEntry": false, // Set to true if you want to stop at the entry point
             "cwd": "${workspaceFolder}", // Set the current working directory
             "environment": [],
             "externalConsole": false, // Use the VS Code integrated terminal

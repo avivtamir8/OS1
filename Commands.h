@@ -60,21 +60,6 @@ public:
 private:
     vector<JobEntry*> jobs;
 
-    int getLargestJobId() {
-        removeFinishedJobs();
-        if (jobs.empty()) {
-            return 0;
-        }
-        int maxId = 0;
-        for (const JobEntry* job : jobs) {
-            if (job->getJobId() > maxId) {
-                maxId = job->getJobId();
-            }
-        }
-        return maxId;
-    }
-
-
 public:
     JobsList() {}
     ~JobsList() {
@@ -84,6 +69,7 @@ public:
     }
 
     void addJob(string cmdLine, pid_t pid, bool isStopped = false){
+        removeFinishedJobs();
         int jobId = getLargestJobId() + 1;
         jobs.push_back(new JobEntry(jobId, pid, cmdLine, isStopped));
     }
@@ -94,15 +80,15 @@ public:
         }
     }
     void killAllJobs(){
-        for (JobEntry* job : jobs) {
-            if (kill(job->getPid(), SIGKILL) == -1) {
-                perror("smash error: kill failed");
-            }
-        }
-        for (JobEntry* job : jobs) {
-            delete job;
-        }
-        jobs.clear();
+        // for (JobEntry* job : jobs) {
+        //     if (kill(job->getPid(), SIGKILL) == -1) {
+        //         perror("smash error: kill failed");
+        //     }
+        // }
+        // for (JobEntry* job : jobs) {
+        //     delete job;
+        // }
+        // jobs.clear();
     }
     void removeFinishedJobs(){
         vector<JobEntry*> updatedJobs; // Temporary vector to store non-finished jobs
@@ -146,13 +132,28 @@ public:
         return jobs.back();
     }
     JobEntry* getLastStoppedJob(int* jobId) {
-        for (auto it = jobs.rbegin(); it != jobs.rend(); ++it) {
-            if ((*it)->getIsStopped()) {
-                *jobId = (*it)->getJobId();
-                return *it;
+        // for (auto it = jobs.rbegin(); it != jobs.rend(); ++it) {
+        //     if ((*it)->getIsStopped()) {
+        //         *jobId = (*it)->getJobId();
+        //         return *it;
+        //     }
+        // }
+        return nullptr;
+    }
+    int getLargestJobId() {
+        if (jobs.empty()) {
+            return 0;
+        }
+        int maxId = 0;
+        for (const JobEntry* job : jobs) {
+            if (job->getJobId() > maxId) {
+                maxId = job->getJobId();
             }
         }
-        return nullptr;
+        return maxId;
+    }
+    bool isEmpty() const {
+        return jobs.empty();
     }
 };
 
@@ -290,9 +291,14 @@ public:
 class ForegroundCommand : public BuiltInCommand {
 private:
     JobsList *jobs;
+    int jobId;
 
 public:
-    ForegroundCommand(const char *cmd_line, JobsList *jobs);
+    ForegroundCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), jobs(jobs) {
+        jobs->removeFinishedJobs();
+        jobId = jobs->getLargestJobId();
+    };
+    ForegroundCommand(const char *cmd_line, JobsList *jobs, int jobId ) : BuiltInCommand(cmd_line), jobs(jobs), jobId(jobId) {}
     virtual ~ForegroundCommand() = default;
 
     void execute() override;

@@ -88,17 +88,17 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
   // Handle alias expansion
   auto aliasIt = aliasMap.find(firstWord);
   if (aliasIt != aliasMap.end()) {
-  string expandedCommand = aliasIt->second;
+    string expandedCommand = aliasIt->second;
 
-  // Append remaining arguments
-  string remainingArgs;
-  istringstream iss(_trim(string(cmd_line)).c_str());
-  getline(iss, remainingArgs);
-  if (!remainingArgs.empty()) {
-    expandedCommand += " " + _trim(remainingArgs);
-  }
+    // Append remaining arguments
+    string remainingArgs;
+    istringstream iss(_trim(string(cmd_line)).c_str());
+    getline(iss, remainingArgs);
+    if (!remainingArgs.empty()) {
+      expandedCommand += " " + _trim(remainingArgs);
+    }
 
-  cmd_s = _trim(expandedCommand);
+    cmd_s = _trim(expandedCommand);
 	}
   /* check whats wrong */
 
@@ -115,20 +115,9 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     return new JobsCommand(cmd_line, jobs);
   } else if (firstWord == "alias") {
     return new AliasCommand(cmd_line, aliasMap);
+  } else if (firstWord == "fg") {
+    return new ForegroundCommand(cmd_line, jobs);
   } 
-  // else if (firstWord == "kill") {
-  //   return new KillCommand(cmd_line, jobs);
-  // } else if (firstWord == "fg") {
-  //   return new ForegroundCommand(cmd_line, jobs);
-  // } else if (firstWord == "bg") {
-  //   return new BackgroundCommand(cmd_line, jobs);
-  // } else if (firstWord == "quit") {
-  //   return new QuitCommand(cmd_line, jobs);
-  // } else if (firstWord == "timeout") {
-  //   return new TimeoutCommand(cmd_line);
-  // } else if (firstWord == "watchproc") {
-  //   return new WatchProcCommand(cmd_line);
-  // }
   else {
     return new ExternalCommand(cmd_line, jobs);
   }
@@ -158,15 +147,8 @@ void SmallShell::setLastDir(const string &dir) {
 // Command class implementation
 Command::Command(const char *cmd_line_input) 
   : cmd_line(_trim(string(cmd_line_input))), is_background(false), alias("") {
+  // Determine if the command is a background command
   is_background = _isBackgroundComamnd(cmd_line.c_str());
-
-  // Remove '&' from the end if it's a background command
-  if (is_background) {
-      char *mutable_cmd_line = strdup(cmd_line.c_str()); // Create a mutable copy of cmd_line
-      _removeBackgroundSign(mutable_cmd_line);
-      this->cmd_line = _trim(string(mutable_cmd_line)); // Update cmd_line after removing '&'
-      free(mutable_cmd_line); // Free the allocated memory
-  }
 
   // Parse the command line into arguments
   char *raw_args[COMMAND_MAX_ARGS + 1];
@@ -255,6 +237,37 @@ void ChangeDirCommand::execute() {
     shell.setLastDir(currentDir);
   }
   free(currentDir);
+}
+
+void ForegroundCommand::execute() {
+  jobs->removeFinishedJobs();
+  if(args.size() > 2) {
+    cerr << "smash error: fg: invalid arguments" << endl;
+    return;
+  }
+
+  if(jobs->getJobById(jobId) == nullptr) {
+    cerr << "smash error: fg: job-id " << jobId << " does not exist" << endl;
+    return;
+  }
+  if (args.size() == 1 && jobs->isEmpty()) {
+    cerr << "smash error: fg: jobs list is empty" << endl;
+    return;    
+  }
+  
+  // Print the command line and PID
+  cout << jobs->getJobById(jobId)->getCmdLine() << " : " << jobs->getJobById(jobId)->getPid() << endl;
+
+  // Wait for the job's process to finish
+  int status;
+  if(waitpid(jobs->getJobById(jobId)->getPid(), &status, WUNTRACED) == -1) {
+    perror("smash error: waitpid failed");
+    return;
+  }
+  if(WIFEXITED(status)) {
+    jobs->removeJobById(jobId);
+  }
+  return;
 }
 
 // AliasCommand Class
@@ -353,10 +366,14 @@ void ExternalCommand::execute() {
       // Child process
       setpgrp(); // Disconnect from the parent's process group for background commands
       // Use the inherited args field directly
-      vector<char *> c_args;
+      vector<char*> c_args; 
       for (const auto &arg : args) {
           c_args.push_back(const_cast<char *>(arg.c_str()));
       }
+      if (_isBackgroundComamnd(c_args.back())) {
+          _removeBackgroundSign(c_args.back()); // Remove the background sign if present
+      }
+      c_args.back() = strdup(_trim(c_args.back()).c_str()); // Trim the last argument and update it
       c_args.push_back(nullptr); // Null-terminate the arguments array
 
       if (execvp(c_args[0], c_args.data()) == -1) {

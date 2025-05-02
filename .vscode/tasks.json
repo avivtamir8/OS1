@@ -5,13 +5,13 @@
             "label": "build",
             "type": "shell",
             "command": "make",
-            "args": ["-f", "Makefile.debug"], // Use the new Makefile
+            "args": ["-f", "Makefile.debug"],
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
             "problemMatcher": ["$gcc"],
-            "detail": "Build the smash binary using Makefile.debug"
+            "detail": "Build using Makefile.debug"
         }
     ]
 }

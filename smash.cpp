@@ -10,7 +10,6 @@ int main(int argc, char *argv[]) {
         perror("smash error: failed to set ctrl-C handler");
     }
 
-
     SmallShell &smash = SmallShell::getInstance();
     while (true) {
         std::cout << smash.getPrompt() << "> ";
@@ -19,45 +18,46 @@ int main(int argc, char *argv[]) {
         smash.executeCommand(cmd_line.c_str());
     }
 
-    // // Create a JobsList instance
-    // JobsList jobsList;
+    /*  main code for debug 
 
-    // // Add a job with a fake PID (12345)
-    // std::cout << "Adding job with PID 12345..." << std::endl;
-    // jobsList.addJob("sleep 10", 12345, false);
+        // Create a JobsList instance
+        JobsList jobsList;
 
-    // // Add another job with a fake PID (12346)
-    // std::cout << "Adding job with PID 12346..." << std::endl;
-    // jobsList.addJob("sleep 20", 12346, false);
+        // Add a job with a fake PID (12345)
+        std::cout << "Adding job with PID 12345..." << std::endl;
+        jobsList.addJob("sleep 10", 12345, false);
 
-    // // Print the jobs list
-    // std::cout << "Jobs list before removing finished jobs:" << std::endl;
-    // jobsList.printJobsList();
+        // Add another job with a fake PID (12346)
+        std::cout << "Adding job with PID 12346..." << std::endl;
+        jobsList.addJob("sleep 20", 12346, false);
 
-    // // Simulate removing finished jobs
-    // std::cout << "Removing finished jobs..." << std::endl;
-    // jobsList.removeFinishedJobs();
+        // Print the jobs list
+        std::cout << "Jobs list before removing finished jobs:" << std::endl;
+        jobsList.printJobsList();
 
-    // // Print the jobs list again
-    // std::cout << "Jobs list after removing finished jobs:" << std::endl;
-    // jobsList.printJobsList();
+        // Simulate removing finished jobs
+        std::cout << "Removing finished jobs..." << std::endl;
+        jobsList.removeFinishedJobs();
 
-    // // Add more jobs and test further
-    // std::cout << "Adding job with PID 12347..." << std::endl;
-    // jobsList.addJob("sleep 30", 12347, false);
+        // Print the jobs list again
+        std::cout << "Jobs list after removing finished jobs:" << std::endl;
+        jobsList.printJobsList();
 
-    // std::cout << "Jobs list after adding another job:" << std::endl;
-    // jobsList.printJobsList();
+        // Add more jobs and test further
+        std::cout << "Adding job with PID 12347..." << std::endl;
+        jobsList.addJob("sleep 30", 12347, false);
 
-    // // Simulate killing all jobs
-    // std::cout << "Killing all jobs..." << std::endl;
-    // jobsList.killAllJobs();
+        std::cout << "Jobs list after adding another job:" << std::endl;
+        jobsList.printJobsList();
 
-    // // Print the jobs list after killing all jobs
-    // std::cout << "Jobs list after killing all jobs:" << std::endl;
-    // jobsList.printJobsList();
+        // Simulate killing all jobs
+        std::cout << "Killing all jobs..." << std::endl;
+        jobsList.killAllJobs();
 
-
+        // Print the jobs list after killing all jobs
+        std::cout << "Jobs list after killing all jobs:" << std::endl;
+        jobsList.printJobsList();
+    */
     return 0;
 }
 
