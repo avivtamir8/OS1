@@ -113,6 +113,8 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         return new AliasCommand(cmd_s.c_str(), aliasMap);
     } else if (firstWord == "unalias") {
         return new UnAliasCommand(cmd_s.c_str(), aliasMap);
+    } else if (firstWord == "kill") {
+        return new KillCommand(cmd_s.c_str(), jobs);
     } else if (firstWord == "fg") {
         return new ForegroundCommand(cmd_s.c_str(), jobs);
     } else {
@@ -420,4 +422,47 @@ void UnAliasCommand::execute() {
         // Remove the alias from the map
         aliasMap.erase(aliasName);
     }
+}
+
+// KillCommand Class
+void KillCommand::execute() {
+    // Validate the number of arguments
+    if (args.size() != 3 || args[1][0] != '-') {
+        cerr << "smash error: kill: invalid arguments" << endl;
+        return;
+    }
+
+    // Parse the signal number
+    int signum;
+    try {
+        signum = stoi(args[1].substr(1)); // Remove the '-' and convert to integer
+    } catch (const invalid_argument &e) {
+        cerr << "smash error: kill: invalid arguments" << endl;
+        return;
+    }
+
+    // Parse the job ID
+    int jobId;
+    try {
+        jobId = stoi(args[2]);
+    } catch (const invalid_argument &e) {
+        cerr << "smash error: kill: invalid arguments" << endl;
+        return;
+    }
+
+    // Find the job by ID
+    JobsList::JobEntry *job = jobs->getJobById(jobId);
+    if (!job) {
+        cerr << "smash error: kill: job-id " << jobId << " does not exist" << endl;
+        return;
+    }
+
+    // Send the signal to the job's process
+    if (kill(job->getPid(), signum) == -1) {
+        perror("smash error: kill failed");
+        return;
+    }
+
+    // Print success message
+    cout << "signal number " << signum << " was sent to pid " << job->getPid() << endl;
 }
