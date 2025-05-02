@@ -320,8 +320,12 @@ public:
 };
 
 class UnAliasCommand : public BuiltInCommand {
+private:
+    map<string, string>& aliasMap;
+
 public:
-    explicit UnAliasCommand(const char *cmd_line);
+    UnAliasCommand(const char *cmd_line, map<string, string>& aliasMap)
+        : BuiltInCommand(cmd_line), aliasMap(aliasMap) {}
     virtual ~UnAliasCommand() = default;
 
     void execute() override;

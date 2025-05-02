@@ -111,6 +111,8 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         return new JobsCommand(cmd_s.c_str(), jobs);
     } else if (firstWord == "alias") {
         return new AliasCommand(cmd_s.c_str(), aliasMap);
+    } else if (firstWord == "unalias") {
+        return new UnAliasCommand(cmd_s.c_str(), aliasMap);
     } else if (firstWord == "fg") {
         return new ForegroundCommand(cmd_s.c_str(), jobs);
     } else {
@@ -395,4 +397,27 @@ void ExternalCommand::execute() {
           cout << "Background process started with PID: " << pid << endl;
       }
   }
+}
+
+// UnAliasCommand Class
+void UnAliasCommand::execute() {
+    // Check if arguments are provided
+    if (args.size() < 2) {
+        cerr << "smash error: unalias: not enough arguments" << endl;
+        return;
+    }
+
+    // Iterate through the provided alias names
+    for (size_t i = 1; i < args.size(); ++i) {
+        const string& aliasName = args[i];
+
+        // Check if the alias exists
+        if (aliasMap.find(aliasName) == aliasMap.end()) {
+            cerr << "smash error: unalias: " << aliasName << " alias does not exist" << endl;
+            return;
+        }
+
+        // Remove the alias from the map
+        aliasMap.erase(aliasName);
+    }
 }
