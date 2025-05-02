@@ -60,20 +60,100 @@ public:
 private:
     vector<JobEntry*> jobs;
 
-    int getLargestJobId();
+    int getLargestJobId() {
+        removeFinishedJobs();
+        if (jobs.empty()) {
+            return 0;
+        }
+        int maxId = 0;
+        for (const JobEntry* job : jobs) {
+            if (job->getJobId() > maxId) {
+                maxId = job->getJobId();
+            }
+        }
+        return maxId;
+    }
+
 
 public:
-    JobsList();
-    ~JobsList();
+    JobsList() {}
+    ~JobsList() {
+        for (JobEntry* job : jobs) {
+            delete job;
+        }
+    }
 
-    void addJob(string cmdLine, pid_t pid, bool isStopped = false);
-    void printJobsList() const;
-    void killAllJobs();
-    void removeFinishedJobs();
-    JobEntry* getJobById(int jobId);
-    void removeJobById(int jobId);
-    JobEntry* getLastJob(int* lastJobId);
-    JobEntry* getLastStoppedJob(int* jobId);
+    void addJob(string cmdLine, pid_t pid, bool isStopped = false){
+        int jobId = getLargestJobId() + 1;
+        jobs.push_back(new JobEntry(jobId, pid, cmdLine, isStopped));
+    }
+
+    void printJobsList() const{
+        for (const JobEntry* job : jobs) {
+            cout << "[" << job->getJobId() << "] " << job->getCmdLine() << endl;
+        }
+    }
+    void killAllJobs(){
+        for (JobEntry* job : jobs) {
+            if (kill(job->getPid(), SIGKILL) == -1) {
+                perror("smash error: kill failed");
+            }
+        }
+        for (JobEntry* job : jobs) {
+            delete job;
+        }
+        jobs.clear();
+    }
+    void removeFinishedJobs(){
+        vector<JobEntry*> updatedJobs; // Temporary vector to store non-finished jobs
+        if (jobs.empty()) {
+            return;
+        }
+        for (JobEntry* job : jobs) {
+            if (waitpid(job->getPid(), nullptr, WNOHANG) > 0) {
+                // Job has finished, delete it
+                delete job;
+            } else {
+                // Job is still running, keep it
+                updatedJobs.push_back(job);
+            }
+        }
+        // Replace the original jobs vector with the updated one
+        jobs = std::move(updatedJobs);
+    }
+    JobEntry* getJobById(int jobId){
+        for (JobEntry* job : jobs) {
+            if (job->getJobId() == jobId) {
+                return job;
+            }
+        }
+        return nullptr;
+    }
+    void removeJobById(int jobId) {
+        for (auto it = jobs.begin(); it != jobs.end(); ++it) {
+            if ((*it)->getJobId() == jobId) {
+                delete *it;
+                jobs.erase(it);
+                break;
+            }
+        }
+    }
+    JobEntry* getLastJob(int* lastJobId) {
+        if (jobs.empty()) {
+            return nullptr;
+        }
+        *lastJobId = jobs.back()->getJobId();
+        return jobs.back();
+    }
+    JobEntry* getLastStoppedJob(int* jobId) {
+        for (auto it = jobs.rbegin(); it != jobs.rend(); ++it) {
+            if ((*it)->getIsStopped()) {
+                *jobId = (*it)->getJobId();
+                return *it;
+            }
+        }
+        return nullptr;
+    }
 };
 
 /*
