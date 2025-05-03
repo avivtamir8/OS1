@@ -3,20 +3,41 @@ COMPILER := g++
 COMPILER_FLAGS := --std=c++11 -Wall -g
 
 # Source files and object files
-SRCS := Commands.cpp signals.cpp smash.cpp Utils.cpp
+SRCS := Commands.cpp signals.cpp Utils.cpp
 OBJS := $(SRCS:.cpp=.o)
 
-# Output binary
+# Smash-specific source files
+SMASH_SRCS := smash.cpp
+SMASH_OBJS := $(SMASH_SRCS:.cpp=.o)
+
+# Test files
+TEST_SRCS := test_watchproc.cpp
+TEST_OBJS := $(TEST_SRCS:.cpp=.o)
+
+# Output binaries
 SMASH_BIN := smash
+TEST_BIN := test_watchproc
+
+# Expected results file
+EXPECTED_RESULTS := expected_watchproc_results.txt
+TEST_OUTPUT := test_watchproc_output.txt
 
 # Build target
-all: clean $(SMASH_BIN) # Add 'clean' as a prerequisite to 'all'
+all: clean $(SMASH_BIN) $(TEST_BIN)
 
-$(SMASH_BIN): $(OBJS)
+$(SMASH_BIN): $(OBJS) $(SMASH_OBJS)
 	$(COMPILER) $(COMPILER_FLAGS) $^ -o $@
+
+$(TEST_BIN): $(OBJS) $(TEST_OBJS)
+	$(COMPILER) $(COMPILER_FLAGS) $(OBJS) $(TEST_OBJS) -o $@
 
 %.o: %.cpp %.h
 	$(COMPILER) $(COMPILER_FLAGS) -c $< -o $@
 
+# Run tests and compare results
+test: $(TEST_BIN)
+	./$(TEST_BIN) > $(TEST_OUTPUT)
+	diff -u $(EXPECTED_RESULTS) $(TEST_OUTPUT) || echo "Test failed: Output differs from expected results."
+
 clean:
-	rm -rf $(SMASH_BIN) $(OBJS)
+	rm -rf $(SMASH_BIN) $(TEST_BIN) $(OBJS) $(SMASH_OBJS) $(TEST_OBJS) $(TEST_OUTPUT)

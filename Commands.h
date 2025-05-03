@@ -163,7 +163,8 @@ public:
         return jobs.empty();
     }
 
-    vector<JobEntry*> getJobs() const { return jobs; }
+    const vector<JobEntry*>& getJobs() const { return jobs; }
+
     void clearJobs() {
         for (JobEntry* job : jobs) {
             delete job;
@@ -286,7 +287,7 @@ private:
     JobsList &jobs;
 
 public:
-    QuitCommand(const char *cmd_line, JobsList &jobs);
+    QuitCommand(const char *cmd_line, JobsList &jobs) : BuiltInCommand(cmd_line), jobs(jobs) {};
     virtual ~QuitCommand() = default;
 
     void execute() override;
@@ -297,7 +298,9 @@ private:
     JobsList &jobs;
 
 public:
-    KillCommand(const char *cmd_line, JobsList &jobs);
+    KillCommand(const char *cmd_line, JobsList &jobs) : BuiltInCommand(cmd_line), jobs(jobs) {
+        jobs.removeFinishedJobs();
+    };
     virtual ~KillCommand() = default;
 
     void execute() override;
@@ -356,10 +359,14 @@ public:
 
 class WatchProcCommand : public BuiltInCommand {
 public:
-    explicit WatchProcCommand(const char *cmd_line);
+    explicit WatchProcCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {};
     virtual ~WatchProcCommand() = default;
 
     void execute() override;
+
+private:
+    bool readCpuTimes(pid_t pid, long long &proc_time, long long &total_time);
+    double readMemoryUsage(pid_t pid);
 };
 
 /*

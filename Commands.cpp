@@ -11,7 +11,9 @@
 #include <set>
 #include <map>
 #include <fstream>
+#include <fcntl.h>
 #include "Commands.h"
+#include <time.h> // For nanosleep
 
 using namespace std;
 
@@ -115,11 +117,13 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     } else if (firstWord == "kill") {
         return new KillCommand(cmd_s.c_str(), jobs);
     } else if (firstWord == "quit") {
-        return new QuitCommand(cmd_s.c_str(), jobs);
+        return new QuitCommand(cmd_s.c_str(), jobs); 
     } else if (firstWord == "fg") {
         return new ForegroundCommand(cmd_s.c_str(), jobs);
     } else if (firstWord == "unsetenv") {
         return new UnSetEnvCommand(cmd_line);
+    } else if (firstWord == "watchproc") {
+        return new WatchProcCommand(cmd_s.c_str());
     } else {
         return new ExternalCommand(cmd_s.c_str(), jobs);
     }
@@ -296,7 +300,7 @@ void ForegroundCommand::execute() {
 
 void AliasCommand::execute() {
     // Trim the command line to handle any spaces
-    string commandLine = _trim(cmd_line);
+    string commandLine = _trim(cmd_line); //TODO: no need the command line is already trimmed of spaces. how does this deal with &
 
     // Case 1: If the command is exactly "alias" with no arguments
     if (commandLine == "alias") {
@@ -572,4 +576,151 @@ void UnSetEnvCommand::execute() {
             return;
         }
     }
+}
+
+
+void WatchProcCommand::execute() {
+    if (args.size() != 2) {
+        cerr << "smash error: watchproc: invalid arguments" << endl;
+        return;
+    }
+
+    // Parse the PID
+    pid_t pid;
+    try {
+        pid = stoi(args[1]);
+    } catch (const invalid_argument &e) {
+        cerr << "smash error: watchproc: invalid arguments" << endl;
+        return;
+    }
+
+    // Check if the process exists
+    string proc_path = "/proc/" + to_string(pid) + "/stat";
+    int fd = open(proc_path.c_str(), O_RDONLY);
+    if (fd == -1) {
+        cerr << "smash error: watchproc: pid " << pid << " does not exist" << endl;
+        return;
+    }
+    close(fd);
+
+    // Read initial CPU and system times
+    long long prev_proc_time = 0, prev_total_time = 0;
+    if (!readCpuTimes(pid, prev_proc_time, prev_total_time)) {
+        cerr << "smash error: watchproc: failed to read process or system CPU times" << endl;
+        return;
+    }
+
+    // Wait for 1 second to calculate deltas
+    struct timespec req = {1, 0}; // 1 second, 0 nanoseconds
+    nanosleep(&req, nullptr);
+
+    // Read current CPU and system times
+    long long curr_proc_time = 0, curr_total_time = 0;
+    if (!readCpuTimes(pid, curr_proc_time, curr_total_time)) {
+        cerr << "smash error: watchproc: pid " << pid << " does not exist" << endl;
+        return;
+    }
+
+    // Calculate CPU usage
+    double cpu_usage = 100.0 * (curr_proc_time - prev_proc_time) / (curr_total_time - prev_total_time);
+
+    // Read memory usage
+    double memory_usage = readMemoryUsage(pid);
+
+    // Display the results
+    cout << "PID: " << pid
+         << " | CPU Usage: " << fixed << setprecision(1) << cpu_usage << "%"
+         << " | Memory Usage: " << fixed << setprecision(1) << memory_usage << " MB" << endl;
+}
+
+bool WatchProcCommand::readCpuTimes(pid_t pid, long long &proc_time, long long &total_time) {
+    // Read process CPU time from /proc/<pid>/stat
+    string proc_stat_path = "/proc/" + to_string(pid) + "/stat";
+    int fd = open(proc_stat_path.c_str(), O_RDONLY);
+    if (fd == -1) {
+        return false;
+    }
+
+    char buffer[1024]; // accourding to the internet this size for the buffer should be enough. its usually aroun 0.5KB
+    ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+    close(fd);
+
+    if (bytes_read <= 0) {
+        return false;
+    }
+    buffer[bytes_read] = '\0'; // Null-terminate the buffer
+
+    istringstream iss(buffer);
+    vector<string> tokens((istream_iterator<string>(iss)), istream_iterator<string>());
+
+    if (tokens.size() < 17) {
+        return false;
+    }
+
+    long utime = stoll(tokens[13]); // User mode time
+    long stime = stoll(tokens[14]); // Kernel mode time
+    proc_time = utime + stime;
+
+    // Read total CPU time from /proc/stat
+    fd = open("/proc/stat", O_RDONLY);
+    if (fd == -1) {
+        return false;
+    }
+
+    bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+    close(fd);
+
+    if (bytes_read <= 0) {
+        return false;
+    }
+    buffer[bytes_read] = '\0'; // Null-terminate the buffer
+
+    iss.clear();
+    iss.str(buffer);
+    string line;
+    getline(iss, line); // Read the first line (CPU stats)
+
+    istringstream stat_iss(line);
+    string cpu_label;
+    stat_iss >> cpu_label; // Skip "cpu"
+
+    long long user, nice, system, idle, iowait, irq, softirq, steal;
+    stat_iss >> user >> nice >> system >> idle >> iowait >> irq >> softirq >> steal;
+
+    total_time = user + nice + system + idle + iowait + irq + softirq + steal;
+
+    return true;
+}
+
+double WatchProcCommand::readMemoryUsage(pid_t pid) {
+    // Read memory usage from /proc/<pid>/status
+    string proc_status_path = "/proc/" + to_string(pid) + "/status";
+    int fd = open(proc_status_path.c_str(), O_RDONLY);
+    if (fd == -1) {
+        return 0.0;
+    }
+
+    char buffer[4096];
+    ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+    close(fd);
+
+    if (bytes_read <= 0) {
+        return 0.0;
+    }
+    buffer[bytes_read] = '\0'; // Null-terminate the buffer
+
+    istringstream iss(buffer);
+    string line;
+    while (getline(iss, line)) {
+        if (line.find("VmRSS:") == 0) { // Look for the "VmRSS" field. should be the first one
+            istringstream line_iss(line);
+            string key;
+            long memory_kb;
+            string unit;
+            line_iss >> key >> memory_kb >> unit;
+            return memory_kb / 1024.0; // Convert KB to MB
+        }
+    }
+
+    return 0.0;
 }
