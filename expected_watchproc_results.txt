@@ -1,0 +1,20 @@
+Running tests for WatchProcCommand...
+Test 1: Valid PID (<runtime_pid>)
+PID: <runtime_pid> | CPU Usage: 0.0% | Memory Usage: 1.9 MB
+Test 2: Invalid PID (99999)
+smash error: watchproc: pid 99999 does not exist
+Test 3: Missing Arguments
+smash error: watchproc: invalid arguments
+Test 4: Non-Numeric PID (abc)
+smash error: watchproc: invalid arguments
+Test 5: Process Termination During Watch
+PID: <runtime_pid> | CPU Usage: 0.0% | Memory Usage: 0.2 MB
+Test 6: Zombie Process
+smash error: watchproc: pid <runtime_pid> does not exist
+Test 7: High CPU Usage Process
+PID: <runtime_pid> | CPU Usage: 95.0% | Memory Usage: 2.0 MB
+Test 8: High Memory Usage Process
+PID: <runtime_pid> | CPU Usage: 0.0% | Memory Usage: 500.0 MB
+Test 9: Idle Process
+PID: <runtime_pid> | CPU Usage: 0.0% | Memory Usage: 0.5 MB
+All tests completed.
