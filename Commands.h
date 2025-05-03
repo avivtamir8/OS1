@@ -8,6 +8,13 @@
 #include <sys/wait.h>
 #include <map>
 
+/* =============================================
+just for debug
+*/
+#include "Utils.h"
+// ==============================================
+
+
 #define COMMAND_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 
@@ -171,10 +178,10 @@ public:
  */
 class ExternalCommand : public Command {
 private:
-    JobsList *jobs;
+    JobsList &jobs;
 
 public:
-    explicit ExternalCommand(const char *cmd_line, JobsList* jobs) : Command(cmd_line), jobs(jobs) {};
+    explicit ExternalCommand(const char *cmd_line, JobsList& jobs) : Command(cmd_line), jobs(jobs) {};
     virtual ~ExternalCommand() = default;
 
     void execute() override;
@@ -257,10 +264,10 @@ public:
 
 class JobsCommand : public BuiltInCommand {
 private:
-    JobsList *jobs;
+    JobsList& jobs;
 
 public:
-    JobsCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), jobs(jobs) {};
+    JobsCommand(const char *cmd_line, JobsList& jobs) : BuiltInCommand(cmd_line), jobs(jobs) {};
     virtual ~JobsCommand() = default;
 
     void execute() override;
@@ -268,10 +275,10 @@ public:
 
 class QuitCommand : public BuiltInCommand {
 private:
-    JobsList *jobs;
+    JobsList &jobs;
 
 public:
-    QuitCommand(const char *cmd_line, JobsList *jobs);
+    QuitCommand(const char *cmd_line, JobsList &jobs);
     virtual ~QuitCommand() = default;
 
     void execute() override;
@@ -279,10 +286,10 @@ public:
 
 class KillCommand : public BuiltInCommand {
 private:
-    JobsList *jobs;
+    JobsList &jobs;
 
 public:
-    KillCommand(const char *cmd_line, JobsList *jobs);
+    KillCommand(const char *cmd_line, JobsList &jobs);
     virtual ~KillCommand() = default;
 
     void execute() override;
@@ -290,15 +297,15 @@ public:
 
 class ForegroundCommand : public BuiltInCommand {
 private:
-    JobsList *jobs;
+    JobsList &jobs;
     int jobId;
 
 public:
-    ForegroundCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), jobs(jobs) {
-        jobs->removeFinishedJobs();
-        jobId = jobs->getLargestJobId();
+    ForegroundCommand(const char *cmd_line, JobsList &jobs) : BuiltInCommand(cmd_line), jobs(jobs) {
+        jobs.removeFinishedJobs();
+        jobId = jobs.getLargestJobId();
     };
-    ForegroundCommand(const char *cmd_line, JobsList *jobs, int jobId ) : BuiltInCommand(cmd_line), jobs(jobs), jobId(jobId) {}
+    ForegroundCommand(const char *cmd_line, JobsList &jobs, int jobId ) : BuiltInCommand(cmd_line), jobs(jobs), jobId(jobId) {}
     virtual ~ForegroundCommand() = default;
 
     void execute() override;
@@ -348,10 +355,12 @@ public:
  */
 class SmallShell {
 private:
+    pid_t foreground_pid;
+    bool is_foreground_running;
     string prompt;
     string lastWorkingDir;
     string prevWorkingDir;
-    JobsList* jobs; //TODO: remove the * and keep the object
+    JobsList jobs;
     map<string, string> aliasMap;
 
     SmallShell();
@@ -365,7 +374,7 @@ public:
         return instance;
     }
 
-    ~SmallShell();
+    ~SmallShell() = default;
 
     Command *CreateCommand(const char *cmd_line);
     void executeCommand(const char *cmd_line);
@@ -376,11 +385,17 @@ public:
     string getLastDir() const;
     void setLastDir(const string &dir);
 
-    JobsList &getJobsList() { return *jobs; }
+    JobsList &getJobsList() { return jobs; }
+
     void setAlias(const string& aliasName, const string& aliasCommand);
     void removeAlias(const string& aliasName);
     string getAlias(const string& aliasName) const;
     void printAliases() const;
+
+    void setForegroundPid(pid_t pid);
+    pid_t getForegroundPid() const;
+    void clearForegroundPid();
+
 };
 
 #endif // SMASH_COMMAND_H_

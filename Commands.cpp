@@ -70,14 +70,12 @@ void _removeBackgroundSign(char *cmd_line) {
   cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
 }
 
-// SmallShell class implementation
-SmallShell::SmallShell() : prompt("smash"), jobs(new JobsList()) {
-    // Initialize other fields if necessary
-}
+SmallShell::SmallShell() 
+  : foreground_pid(-1), is_foreground_running(false), prompt("smash"),
+    lastWorkingDir(""), prevWorkingDir("")
+{}
 
-SmallShell::~SmallShell() {
-    delete jobs;
-}
+
 
 Command *SmallShell::CreateCommand(const char *cmd_line) {
     string cmd_s = _trim(string(cmd_line));
@@ -136,6 +134,20 @@ string SmallShell::getLastDir() const {
 
 void SmallShell::setLastDir(const string &dir) {
   lastWorkingDir = dir;
+}
+
+void SmallShell::setForegroundPid(pid_t pid) {
+  foreground_pid = pid;
+  is_foreground_running = true;
+}
+
+pid_t SmallShell::getForegroundPid() const {
+  return is_foreground_running ? foreground_pid : -1; // Return -1 if no foreground process
+}
+
+void SmallShell::clearForegroundPid() {
+  foreground_pid = -1;
+  is_foreground_running = false;
 }
 
 // Command class implementation
@@ -234,32 +246,39 @@ void ChangeDirCommand::execute() {
 }
 
 void ForegroundCommand::execute() {
-  jobs->removeFinishedJobs();
+  jobs.removeFinishedJobs();
+
   if(args.size() > 2) {
     cerr << "smash error: fg: invalid arguments" << endl;
     return;
   }
 
-  if(jobs->getJobById(jobId) == nullptr) {
+  if(jobs.getJobById(jobId) == nullptr) {
     cerr << "smash error: fg: job-id " << jobId << " does not exist" << endl;
     return;
   }
-  if (args.size() == 1 && jobs->isEmpty()) {
+  if (args.size() == 1 && jobs.isEmpty()) {
     cerr << "smash error: fg: jobs list is empty" << endl;
     return;    
   }
   
   // Print the command line and PID
-  cout << jobs->getJobById(jobId)->getCmdLine() << " : " << jobs->getJobById(jobId)->getPid() << endl;
+  cout << jobs.getJobById(jobId)->getCmdLine() << " : " << jobs.getJobById(jobId)->getPid() << endl;
+
+  // Set the foreground PID in SmallShell
+  SmallShell &smash = SmallShell::getInstance();
+  smash.setForegroundPid(jobs.getJobById(jobId)->getPid());
 
   // Wait for the job's process to finish
   int status;
-  if(waitpid(jobs->getJobById(jobId)->getPid(), &status, WUNTRACED) == -1) {
+  if(waitpid(jobs.getJobById(jobId)->getPid(), &status, WUNTRACED) == -1) {
     perror("smash error: waitpid failed");
     return;
   }
+
   if(WIFEXITED(status)) {
-    jobs->removeJobById(jobId);
+    jobs.removeJobById(jobId);
+    smash.clearForegroundPid();
   }
   return;
 }
@@ -352,47 +371,66 @@ void SmallShell::printAliases() const {
 }
 
 void JobsCommand::execute() {
-  jobs->removeFinishedJobs();
-  jobs->printJobsList();
+  jobs.removeFinishedJobs();
+  jobs.printJobsList();
 };
 
 void ExternalCommand::execute() {
+  /*
+   * Executes an external command.
+   * Handles both foreground and background processes.
+   * Separates the child process into its own process group.
+   */
+
   pid_t pid = fork();
-  if (pid == -1) {
-      perror("smash error: fork failed");
-      return;
+  if (pid < 0) {
+    perror("smash error: fork failed");
+    return;
   }
 
   if (pid == 0) {
-      // Child process
-      setpgrp(); // Disconnect from the parent's process group for background commands
-      // Use the inherited args field directly
-      vector<char*> c_args; 
-      for (const auto &arg : args) {
-          c_args.push_back(const_cast<char *>(arg.c_str()));
-      }
-      if (_isBackgroundComamnd(c_args.back())) {
-          _removeBackgroundSign(c_args.back()); // Remove the background sign if present
-      }
-      c_args.back() = strdup(_trim(c_args.back()).c_str()); // Trim the last argument and update it
-      c_args.push_back(nullptr); // Null-terminate the arguments array
+    // Child process
+    setpgrp(); 
 
-      if (execvp(c_args[0], c_args.data()) == -1) {
-          perror("smash error: execvp failed");
-          exit(1); // Exit the child process if execvp fails
+    string cmd_line_copy = cmd_line;
+    if (is_background) {
+      _removeBackgroundSign(&cmd_line_copy[0]);
+    }
+
+    char *args[COMMAND_MAX_ARGS + 1];
+    int argsCount = _parseCommandLine(cmd_line_copy.c_str(), args);
+    args[argsCount] = nullptr;
+
+    if (execvp(args[0], args) == -1) {
+      perror("smash error: execvp failed");
+
+      // Free allocated memory before exiting
+      for (int i = 0; i < argsCount; ++i) {
+        free(args[i]);
       }
+      exit(1);
+    }
+
+    // Free allocated memory (in case execvp fails unexpectedly)
+    for (int i = 0; i < argsCount; ++i) {
+      free(args[i]);
+    }
+    exit(0);
   } else {
-      // Parent process
-      if (!is_background) {
-          // Foreground execution: Wait for the child process to finish
-          int status;
-          if (waitpid(pid, &status, 0) == -1) {
-              perror("smash error: waitpid failed");
-          }
-      } else {
-          // Background execution: Create a job instance and add it to the jobs list
-          jobs->addJob(cmd_line, pid, false); // Add the job to the jobs list
-          cout << "Background process started with PID: " << pid << endl;
+    // Parent process
+    SmallShell &smash = SmallShell::getInstance();
+
+    if (!is_background) {
+      // Foreground execution: Wait for the child process to finish
+      smash.setForegroundPid(pid);
+      int status;
+      if (waitpid(pid, &status, 0) == -1) {
+        perror("smash error: waitpid failed");
       }
+      smash.clearForegroundPid(); // Clear the foreground PID after the process finishes
+    } else {
+      // Background execution: Add the job to the jobs list
+      jobs.addJob(cmd_line, pid, false);
+    }
   }
 }

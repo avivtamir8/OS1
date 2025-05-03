@@ -1,3 +1,0 @@
-smash> smash> hello> hello> hello> Background process started with PID: 32107
-hello> smash> Background process started with PID: 32108
-smash> 

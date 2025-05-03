@@ -3,14 +3,14 @@ COMPILER := g++
 COMPILER_FLAGS := --std=c++11 -Wall -g
 
 # Source files and object files
-SRCS := Commands.cpp signals.cpp smash.cpp
+SRCS := Commands.cpp signals.cpp smash.cpp Utils.cpp
 OBJS := $(SRCS:.cpp=.o)
 
 # Output binary
 SMASH_BIN := smash
 
 # Build target
-all: $(SMASH_BIN)
+all: clean $(SMASH_BIN) # Add 'clean' as a prerequisite to 'all'
 
 $(SMASH_BIN): $(OBJS)
 	$(COMPILER) $(COMPILER_FLAGS) $^ -o $@

@@ -6,5 +6,22 @@
 using namespace std;
 
 void ctrlCHandler(int sig_num) {
-    // TODO: Add your implementation
+    cout << "smash: got ctrl-C" << endl;
+
+    SmallShell& smash = SmallShell::getInstance();
+    pid_t fg_pid = smash.getForegroundPid();
+
+    if (fg_pid > 0) {
+        // If a foreground process exists, send SIGINT to it
+        if (kill(fg_pid, SIGINT) == -1) {
+            perror("smash error: kill failed");
+        } else {
+            std::cout << "smash: process " << fg_pid << " was killed" << std::endl;
+        }
+        smash.clearForegroundPid();
+    } else {
+        // If no foreground process, reprint the prompt
+        // need to flush the output to ensure the prompt appears immediately
+        std::cout << smash.getPrompt() << "> " << std::flush;
+    }
 }
