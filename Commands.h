@@ -348,7 +348,7 @@ public:
 
 class UnSetEnvCommand : public BuiltInCommand {
 public:
-    explicit UnSetEnvCommand(const char *cmd_line);
+    explicit UnSetEnvCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
     virtual ~UnSetEnvCommand() = default;
 
     void execute() override;

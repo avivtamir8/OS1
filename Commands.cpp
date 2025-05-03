@@ -10,6 +10,7 @@
 #include <string>
 #include <set>
 #include <map>
+#include <fstream>
 #include "Commands.h"
 
 using namespace std;
@@ -117,6 +118,8 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         return new QuitCommand(cmd_s.c_str(), jobs);
     } else if (firstWord == "fg") {
         return new ForegroundCommand(cmd_s.c_str(), jobs);
+    } else if (firstWord == "unsetenv") {
+        return new UnSetEnvCommand(cmd_line);
     } else {
         return new ExternalCommand(cmd_s.c_str(), jobs);
     }
@@ -441,6 +444,14 @@ void ExternalCommand::execute() {
   }
 }
 
+// KillCommand Constructor
+KillCommand::KillCommand(const char *cmd_line, JobsList &jobs)
+    : BuiltInCommand(cmd_line), jobs(jobs) {}
+
+// QuitCommand Constructor
+QuitCommand::QuitCommand(const char *cmd_line, JobsList &jobs)
+    : BuiltInCommand(cmd_line), jobs(jobs) {}
+
 // UnAliasCommand Class
 void UnAliasCommand::execute() {
     // Check if arguments are provided
@@ -536,4 +547,29 @@ void QuitCommand::execute() {
 
     // Exit the shell
     exit(0);
+}
+
+void UnSetEnvCommand::execute() {
+    // Check if arguments are provided
+    if (args.size() < 2) {
+        cerr << "smash error: unsetenv: not enough arguments" << endl;
+        return;
+    }
+
+    // Iterate through the provided environment variable names
+    for (size_t i = 1; i < args.size(); ++i) {
+        const string &varName = args[i];
+
+        // Check if the environment variable exists
+        if (getenv(varName.c_str()) == nullptr) {
+            cerr << "smash error: unsetenv: " << varName << " does not exist" << endl;
+            return;
+        }
+
+        // Remove the environment variable using unsetenv()
+        if (unsetenv(varName.c_str()) != 0) {
+            perror("smash error: unsetenv failed");
+            return;
+        }
+    }
 }
