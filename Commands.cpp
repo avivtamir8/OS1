@@ -491,7 +491,7 @@ void KillCommand::execute() {
     }
 
     // Find the job by ID
-    JobsList::JobEntry *job = jobs->getJobById(jobId);
+    JobsList::JobEntry *job = jobs.getJobById(jobId);
     if (!job) {
         cerr << "smash error: kill: job-id " << jobId << " does not exist" << endl;
         return;
@@ -514,10 +514,10 @@ void QuitCommand::execute() {
 
     if (killFlag) {
         // Remove finished jobs before killing
-        jobs->removeFinishedJobs();
+        jobs.removeFinishedJobs();
 
         // Get the list of remaining jobs
-        vector<JobsList::JobEntry*> remainingJobs = jobs->getJobs();
+        vector<JobsList::JobEntry*> remainingJobs = jobs.getJobs();
 
         // Print the number of jobs to be killed
         cout << "smash: sending SIGKILL signal to " << remainingJobs.size() << " jobs:" << endl;
@@ -531,7 +531,7 @@ void QuitCommand::execute() {
         }
 
         // Clear the jobs list
-        jobs->clearJobs();
+        jobs.clearJobs();
     }
 
     // Exit the shell
