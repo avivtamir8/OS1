@@ -186,12 +186,27 @@ public:
  * Command Family Definitions
  */
 class ExternalCommand : public Command {
-private:
+protected:
     JobsList &jobs;
 
 public:
     explicit ExternalCommand(const char *cmd_line, JobsList& jobs) : Command(cmd_line), jobs(jobs) {};
     virtual ~ExternalCommand() = default;
+
+};
+
+class SimpleExternalCommand : public ExternalCommand {
+public:
+    explicit SimpleExternalCommand(const char *cmd_line, JobsList& jobs) : ExternalCommand(cmd_line, jobs) {};
+    virtual ~SimpleExternalCommand() = default;
+
+    void execute() override;
+};
+
+class ComplexExternalCommand : public ExternalCommand {
+public:
+    explicit ComplexExternalCommand(const char *cmd_line, JobsList& jobs) : ExternalCommand(cmd_line, jobs) {};
+    virtual ~ComplexExternalCommand() = default;
 
     void execute() override;
 };

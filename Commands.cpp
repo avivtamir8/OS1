@@ -125,7 +125,12 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     } else if (firstWord == "watchproc") {
         return new WatchProcCommand(cmd_s.c_str());
     } else {
-        return new ExternalCommand(cmd_s.c_str(), jobs);
+        if(cmd_s.find('?') != string::npos || cmd_s.find('*') != string::npos) {
+          return new ComplexExternalCommand(cmd_s.c_str(), jobs);
+        }
+        else {
+          return new SimpleExternalCommand(cmd_s.c_str(), jobs);
+        }
     }
 }
 
@@ -388,7 +393,7 @@ void JobsCommand::execute() {
   jobs.printJobsList();
 };
 
-void ExternalCommand::execute() {
+void SimpleExternalCommand::execute() {
   /*
    * Executes an external command.
    * Handles both foreground and background processes.
@@ -448,13 +453,48 @@ void ExternalCommand::execute() {
   }
 }
 
-// KillCommand Constructor
-KillCommand::KillCommand(const char *cmd_line, JobsList &jobs)
-    : BuiltInCommand(cmd_line), jobs(jobs) {}
+void ComplexExternalCommand::execute() {
+  pid_t pid = fork();
+  if (pid < 0) {
+    perror("smash error: fork failed");
+    return;
+  }
 
-// QuitCommand Constructor
-QuitCommand::QuitCommand(const char *cmd_line, JobsList &jobs)
-    : BuiltInCommand(cmd_line), jobs(jobs) {}
+  if (pid == 0) {
+    // Child process
+    setpgrp();
+
+    string cmd_line_copy = cmd_line;
+    if (is_background) {
+      _removeBackgroundSign(&cmd_line_copy[0]);
+    }
+
+    const char *args[] = {"/bin/bash", "-c", cmd_line_copy.c_str(), nullptr};
+    if (execvp(args[0], const_cast<char *const *>(args)) == -1) {
+      perror("smash error: execvp failed");
+      exit(1);
+    }
+  } else {
+    // Parent process
+    SmallShell &smash = SmallShell::getInstance();
+
+    if (!is_background) {
+      // Foreground execution: Wait for the child process to finish
+      smash.setForegroundPid(pid);
+      int status;
+      if (waitpid(pid, &status, WUNTRACED) == -1) {
+        perror("smash error: waitpid failed");
+      }
+      smash.clearForegroundPid(); // Clear the foreground PID after the process finishes
+    } else {
+      // Background execution: Add the job to the jobs list
+      jobs.addJob(cmd_line, pid, false);
+    }
+  }
+
+  return;
+}
+
 
 // UnAliasCommand Class
 void UnAliasCommand::execute() {
