@@ -100,7 +100,9 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
     }
 
-    if (firstWord == "chprompt") {
+    if (cmd_s.find(">") != string::npos || cmd_s.find(">>") != string::npos) {
+        return new RedirectionCommand(cmd_s.c_str());
+    } else if (firstWord == "chprompt") {
         return new ChPromptCommand(cmd_s.c_str());
     } else if (firstWord == "showpid") {
         return new ShowPidCommand(cmd_s.c_str());
@@ -121,7 +123,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     } else if (firstWord == "fg") {
         return new ForegroundCommand(cmd_s.c_str(), jobs);
     } else if (firstWord == "unsetenv") {
-        return new UnSetEnvCommand(cmd_line);
+        return new UnSetEnvCommand(cmd_s.c_str());
     } else if (firstWord == "watchproc") {
         return new WatchProcCommand(cmd_s.c_str());
     } else {
@@ -764,3 +766,70 @@ double WatchProcCommand::readMemoryUsage(pid_t pid) {
 
     return 0.0;
 }
+
+void RedirectionCommand::execute() {
+  string command_to_run, output_file;
+  bool append_mode = false;
+  size_t redirect_pos;
+
+  string cmd_line_copy = cmd_line;
+  _removeBackgroundSign(&cmd_line_copy[0]);
+
+  if ((redirect_pos = cmd_line_copy.find(">>")) != string::npos) {
+    append_mode = true;
+    command_to_run = _trim(cmd_line_copy.substr(0, redirect_pos));
+    output_file = _trim(cmd_line_copy.substr(redirect_pos + 2));
+  } else if ((redirect_pos = cmd_line_copy.find('>')) != string::npos) {
+    append_mode = false;
+    command_to_run = _trim(cmd_line_copy.substr(0, redirect_pos));
+    output_file = _trim(cmd_line_copy.substr(redirect_pos + 1));
+  } else {
+    cerr << "smash error: redirection: invalid format" << endl;
+    return;
+  }
+
+  if (command_to_run.empty() || output_file.empty()) {
+    cerr << "smash error: redirection: invalid format" << endl;
+    return;
+  }
+
+
+  int original_stdout_fd = dup(STDOUT_FILENO);
+  if (original_stdout_fd == -1) {
+    perror("smash error: dup failed");
+    return;
+  }
+  int flags = O_CREAT | O_WRONLY;
+  flags |= (append_mode) ? O_APPEND : O_TRUNC;
+  int file_fd = open(output_file.c_str(), flags, 0666);
+  if (file_fd == -1) {
+    perror("smash error: open failed");
+    close(original_stdout_fd);
+    return;
+  }
+  if(dup2(file_fd, STDOUT_FILENO) == -1) {
+    perror("smash error: dup2 failed");
+    close(original_stdout_fd);
+    close(file_fd);
+    return;
+  }
+  if(close(file_fd) == -1) {
+    perror("smash error: close failed");
+    dup2(original_stdout_fd, STDOUT_FILENO); //automatically close what was in STDOUT_FILENO and restore to original
+    close(original_stdout_fd);
+    return;
+  }
+  fflush(stdout);
+  SmallShell &smash = SmallShell::getInstance();
+  smash.executeCommand(command_to_run.c_str());
+  fflush(stdout); // Ensure all buffered output is written to the file
+  if(dup2(original_stdout_fd, STDOUT_FILENO) == -1) {
+    perror("smash error: dup2 failed to restore stdout");
+    close(original_stdout_fd);
+    return;
+  }
+  if(close(original_stdout_fd) == -1) {
+    perror("smash error: close failed for original stdout fd");
+  }
+}
+

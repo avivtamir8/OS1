@@ -213,7 +213,7 @@ public:
 
 class RedirectionCommand : public Command {
 public:
-    explicit RedirectionCommand(const char *cmd_line);
+    explicit RedirectionCommand(const char *cmd_line) : Command(cmd_line) {};
     virtual ~RedirectionCommand() = default;
 
     void execute() override;
