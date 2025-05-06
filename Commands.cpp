@@ -127,7 +127,11 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         return new UnSetEnvCommand(cmd_s.c_str());
     } else if (firstWord == "watchproc") {
         return new WatchProcCommand(cmd_s.c_str());
-    } else {
+    }
+    else if (firstWord == "whoami") {
+      return new WhoAmICommand(cmd_s.c_str());
+    } 
+    else {
         if(cmd_s.find('?') != string::npos || cmd_s.find('*') != string::npos) {
           return new ComplexExternalCommand(cmd_s.c_str(), jobs);
         }
@@ -836,7 +840,7 @@ void RedirectionCommand::execute() {
 
 // WhoamiCommand Class
 void WhoAmICommand::execute() {
-	char* username = getenv("USER"); // Retrieve the USER environment variable
+  char* username = getenv("USER"); // Retrieve the USER environment variable
 	char* homeDir = getenv("HOME");  // Retrieve the HOME environment variable
 
 	if (username && homeDir) {
@@ -846,5 +850,3 @@ void WhoAmICommand::execute() {
 		std::cerr << "smash error: whoami: failed to retrieve user information" << std::endl;
 	}
 }
-
-

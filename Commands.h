@@ -237,7 +237,7 @@ public:
 
 class WhoAmICommand : public Command {
 public:
-    explicit WhoAmICommand(const char *cmd_line);
+    explicit WhoAmICommand(const char *cmd_line) : Command(cmd_line) {};
     virtual ~WhoAmICommand() = default;
 
     void execute() override;
