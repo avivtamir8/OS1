@@ -103,6 +103,8 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
 
     if (cmd_s.find(">") != string::npos || cmd_s.find(">>") != string::npos) {
         return new RedirectionCommand(cmd_s.c_str());
+    } else if (cmd_s.find("|") != string::npos || cmd_s.find("|&") != string::npos) {
+      return new PipeCommand(cmd_s.c_str());
     } else if (firstWord == "chprompt") {
         return new ChPromptCommand(cmd_s.c_str());
     } else if (firstWord == "showpid") {
@@ -838,7 +840,102 @@ void RedirectionCommand::execute() {
   }
 }
 
-// WhoamiCommand Class
+void PipeCommand::execute() {
+  string command_1, command_2;
+  bool error_mode = false; // true for |& (stderr), false for | (stdout)
+  size_t pipe_pos;
+
+  string cmd_line_copy = cmd_line;
+  _removeBackgroundSign(&cmd_line_copy[0]); 
+
+  if ((pipe_pos = cmd_line_copy.find("|&")) != string::npos) {
+    error_mode = true;
+    command_1 = _trim(cmd_line_copy.substr(0, pipe_pos));
+    command_2 = _trim(cmd_line_copy.substr(pipe_pos + 2));
+  } else if ((pipe_pos = cmd_line_copy.find('|')) != string::npos) {
+    error_mode = false;
+    command_1 = _trim(cmd_line_copy.substr(0, pipe_pos));
+    command_2 = _trim(cmd_line_copy.substr(pipe_pos + 1));
+  } else {
+    // This case should ideally be caught by CreateCommand logic
+    cerr << "smash error: pipe: invalid format" << endl;
+    return;
+  }
+
+  if (command_1.empty() || command_2.empty()) {
+    cerr << "smash error: pipe: invalid format" << endl;
+    return;
+  }
+
+  int pipe_fd[2];
+  if (pipe(pipe_fd) == -1) {
+    perror("smash error: pipe failed");
+    return;
+  }
+
+  SmallShell &smash = SmallShell::getInstance();
+  pid_t pid1 = fork();
+  if (pid1 == -1) {
+    perror("smash error: fork failed");
+    close(pipe_fd[0]);
+    close(pipe_fd[1]);
+    return;
+  }
+  if (pid1 == 0) {
+    // Child 1: Executes command_1
+    setpgrp(); 
+    int target_fd_for_cmd1_output = error_mode ? STDERR_FILENO : STDOUT_FILENO;
+    if (dup2(pipe_fd[1], target_fd_for_cmd1_output) == -1) {
+      perror("smash error: dup2 failed for command1 output");
+      close(pipe_fd[0]);
+      close(pipe_fd[1]);
+      exit(1);
+    }
+    close(pipe_fd[0]);
+    close(pipe_fd[1]);
+    smash.executeCommand(command_1.c_str());
+    exit(0);
+  }
+
+  // Parent process continues to fork the second child
+  pid_t pid2 = fork();
+  if (pid2 == -1) {
+    perror("smash error: fork failed for command2");
+    // Clean up first child if it was successfully forked
+    kill(pid1, SIGINT);
+    waitpid(pid1, nullptr, 0);
+    close(pipe_fd[0]);
+    close(pipe_fd[1]);
+    return;
+  }
+  if (pid2 == 0) {
+    // Child 2: Executes command_2
+    setpgrp();
+    if (dup2(pipe_fd[0], STDIN_FILENO) == -1) {
+      perror("smash error: dup2 failed for command2 input");
+      close(pipe_fd[0]);
+      close(pipe_fd[1]);
+      exit(1);
+    }
+    close(pipe_fd[1]);
+    close(pipe_fd[0]);
+    smash.executeCommand(command_2.c_str());
+    exit(0);
+  }
+
+  // Parent process:
+  close(pipe_fd[0]);
+  close(pipe_fd[1]);  
+  int status1, status2;
+  if (waitpid(pid1, &status1, 0) == -1) {
+    perror("smash error: waitpid failed for command1");
+  }
+  if (waitpid(pid2, &status2, 0) == -1) {
+    perror("smash error: waitpid failed for command2");
+  }
+}// WhoamiCommand Class
+
+
 void WhoAmICommand::execute() {
   char* username = getenv("USER"); // Retrieve the USER environment variable
 	char* homeDir = getenv("HOME");  // Retrieve the HOME environment variable

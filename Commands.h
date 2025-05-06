@@ -221,7 +221,7 @@ public:
 
 class PipeCommand : public Command {
 public:
-    explicit PipeCommand(const char *cmd_line);
+    explicit PipeCommand(const char *cmd_line) : Command(cmd_line) {};
     virtual ~PipeCommand() = default;
 
     void execute() override;
