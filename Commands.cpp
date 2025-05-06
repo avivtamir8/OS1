@@ -13,7 +13,8 @@
 #include <fstream>
 #include <fcntl.h>
 #include "Commands.h"
-#include <time.h> // For nanosleep
+#include <iterator>
+#include <time.h> 
 
 using namespace std;
 
@@ -832,4 +833,18 @@ void RedirectionCommand::execute() {
     perror("smash error: close failed for original stdout fd");
   }
 }
+
+// WhoamiCommand Class
+void WhoAmICommand::execute() {
+	char* username = getenv("USER"); // Retrieve the USER environment variable
+	char* homeDir = getenv("HOME");  // Retrieve the HOME environment variable
+
+	if (username && homeDir) {
+		std::cout << username << " " << homeDir << std::endl;
+	}
+	else {
+		std::cerr << "smash error: whoami: failed to retrieve user information" << std::endl;
+	}
+}
+
 
