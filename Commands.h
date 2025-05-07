@@ -8,11 +8,6 @@
 #include <sys/wait.h>
 #include <map>
 
-/* =============================================
-just for debug
-*/
-#include "Utils.h"
-// ==============================================
 
 
 #define COMMAND_MAX_LENGTH (200)
@@ -43,61 +38,73 @@ public:
 };
 
 /*
- * JobsList and Related Commands
+ * JobsList Class
+ * 
+ * This class manages a list of jobs (processes) running in the background.
+ * It provides functionality to add, remove, and retrieve jobs, as well as
+ * to clean up finished jobs and print the current job list.
  */
 class JobsList {
 public:
+    /*
+     * JobEntry Class
+     * Represents a single job entry with its ID, process ID, and command line.
+     */
     class JobEntry {
         int jobId;
         pid_t pid;
-        bool isStopped; //TODO: think if needed
         string cmdLine;
 
     public:
-        JobEntry(int jobId, pid_t pid, const string& cmdLine, bool isStopped = false)
-            : jobId(jobId), pid(pid), isStopped(isStopped), cmdLine(cmdLine) {}
+        JobEntry(int jobId, pid_t pid, const string& cmdLine)
+            : jobId(jobId), pid(pid), cmdLine(cmdLine) {}
 
         int getJobId() const { return jobId; }
         pid_t getPid() const { return pid; }
-        bool getIsStopped() const { return isStopped; }
-        void setStopped(bool val) { isStopped = val; }
         const string& getCmdLine() const { return cmdLine; }
     };
 
 private:
-    vector<JobEntry*> jobs;
+    vector<JobEntry*> jobs; // List of job entries
 
 public:
+    
     JobsList() {}
+
     ~JobsList() {
         for (JobEntry* job : jobs) {
             delete job;
         }
     }
 
-    void addJob(string cmdLine, pid_t pid, bool isStopped = false){
+    /*
+     * Adds a new job to the list.
+     * Removes finished jobs before adding the new job.
+     * 
+     * Parameters:
+     * - cmdLine: The command line of the job.
+     * - pid: The process ID of the job.
+     */
+    void addJob(string cmdLine, pid_t pid) {
         removeFinishedJobs();
         int jobId = getLargestJobId() + 1;
-        jobs.push_back(new JobEntry(jobId, pid, cmdLine, isStopped));
+        jobs.push_back(new JobEntry(jobId, pid, cmdLine));
     }
 
-    void printJobsList() const{
+    /*
+     * Prints the list of jobs to the standard output.
+     */
+    void printJobsList() const {
         for (const JobEntry* job : jobs) {
             cout << "[" << job->getJobId() << "] " << job->getCmdLine() << endl;
         }
     }
-    void killAllJobs(){
-        // for (JobEntry* job : jobs) {
-        //     if (kill(job->getPid(), SIGKILL) == -1) {
-        //         perror("smash error: kill failed");
-        //     }
-        // }
-        // for (JobEntry* job : jobs) {
-        //     delete job;
-        // }
-        // jobs.clear();
-    }
-    void removeFinishedJobs(){
+
+    /*
+     * Removes finished jobs from the list.
+     * Uses waitpid with WNOHANG to check if jobs have finished.
+     */
+    void removeFinishedJobs() {
         vector<JobEntry*> updatedJobs; // Temporary vector to store non-finished jobs
         if (jobs.empty()) {
             return;
@@ -114,7 +121,17 @@ public:
         // Replace the original jobs vector with the updated one
         jobs = std::move(updatedJobs);
     }
-    JobEntry* getJobById(int jobId){
+
+    /*
+     * Retrieves a job by its ID.
+     * 
+     * Parameters:
+     * - jobId: The ID of the job to retrieve.
+     * 
+     * Returns:
+     * - A pointer to the JobEntry if found, or nullptr if not found.
+     */
+    JobEntry* getJobById(int jobId) {
         for (JobEntry* job : jobs) {
             if (job->getJobId() == jobId) {
                 return job;
@@ -122,6 +139,13 @@ public:
         }
         return nullptr;
     }
+
+    /*
+     * Removes a job from the list by its ID.
+     * 
+     * Parameters:
+     * - jobId: The ID of the job to remove.
+     */
     void removeJobById(int jobId) {
         for (auto it = jobs.begin(); it != jobs.end(); ++it) {
             if ((*it)->getJobId() == jobId) {
@@ -131,22 +155,13 @@ public:
             }
         }
     }
-    JobEntry* getLastJob(int* lastJobId) {
-        if (jobs.empty()) {
-            return nullptr;
-        }
-        *lastJobId = jobs.back()->getJobId();
-        return jobs.back();
-    }
-    JobEntry* getLastStoppedJob(int* jobId) {
-        // for (auto it = jobs.rbegin(); it != jobs.rend(); ++it) {
-        //     if ((*it)->getIsStopped()) {
-        //         *jobId = (*it)->getJobId();
-        //         return *it;
-        //     }
-        // }
-        return nullptr;
-    }
+
+    /*
+     * Retrieves the largest job ID in the list.
+     * 
+     * Returns:
+     * - The largest job ID, or 0 if the list is empty.
+     */
     int getLargestJobId() {
         if (jobs.empty()) {
             return 0;
@@ -159,12 +174,17 @@ public:
         }
         return maxId;
     }
+
     bool isEmpty() const {
         return jobs.empty();
     }
 
     const vector<JobEntry*>& getJobs() const { return jobs; }
 
+    /*
+     * Clears all jobs from the list.
+     * Deletes all dynamically allocated JobEntry objects.
+     */
     void clearJobs() {
         for (JobEntry* job : jobs) {
             delete job;
@@ -232,7 +252,7 @@ private:
     long long calculateDiskUsage(const char* path);
 
 public:
-    explicit DiskUsageCommand(const char *cmd_line);
+    explicit DiskUsageCommand(const char *cmd_line) : Command(cmd_line) {};
     virtual ~DiskUsageCommand() = default;
 
     void execute() override;
