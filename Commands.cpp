@@ -467,40 +467,59 @@ void ChangeDirCommand::execute() {
 void ForegroundCommand::execute() {
   jobs.removeFinishedJobs();
 
-  if (args.size() > 2) {
+  int effective_job_id_to_use;
+
+  // Determine effective_job_id_to_use based on arguments
+  if (args.size() == 1) { // Case: fg (no arguments)
+    if (jobs.isEmpty()) {
+      cerr << "smash error: fg: jobs list is empty" << endl;
+      return;
+    }
+    effective_job_id_to_use = jobs.getLargestJobId();
+  } else if (args.size() == 2) { // Case: fg <job-id>
+    try {
+      effective_job_id_to_use = stoi(args[1]);
+    } catch (const invalid_argument &e) {
+      cerr << "smash error: fg: invalid arguments" << endl; // Non-numeric job-id
+      return;
+    } catch (const out_of_range &e) { // Number too large/small for int
+      cerr << "smash error: fg: invalid arguments" << endl;
+      return;
+    }
+  } else { // Case: Too many arguments
     cerr << "smash error: fg: invalid arguments" << endl;
     return;
   }
 
-  if (jobs.getJobById(jobId) == nullptr) {
-    cerr << "smash error: fg: job-id " << jobId << " does not exist" << endl;
-    return;
-  }
+  // Get the job using the determined effective_job_id_to_use
+  JobsList::JobEntry *job = jobs.getJobById(effective_job_id_to_use);
 
-  if (args.size() == 1 && jobs.isEmpty()) {
-    cerr << "smash error: fg: jobs list is empty" << endl;
+  if (job == nullptr) {
+    cerr << "smash error: fg: job-id " << effective_job_id_to_use << " does not exist" << endl;
     return;
   }
 
   // Print the command line and PID
-  cout << jobs.getJobById(jobId)->getCmdLine() << " : " << jobs.getJobById(jobId)->getPid() << endl;
+  cout << job->getCmdLine() << " " << job->getPid() << endl;
 
   // Set the foreground PID in SmallShell
   SmallShell &smash = SmallShell::getInstance();
-  smash.setForegroundPid(jobs.getJobById(jobId)->getPid());
+  smash.setForegroundPid(job->getPid());
 
   // Wait for the job's process to finish
   int status;
-  if (waitpid(jobs.getJobById(jobId)->getPid(), &status, WUNTRACED) == -1) {
+  if (waitpid(job->getPid(), &status, WUNTRACED) == -1) {
     perror("smash error: waitpid failed");
+    smash.clearForegroundPid(); // Clear foreground PID as waiting failed
     return;
   }
 
-  if (WIFEXITED(status)) {
-    jobs.removeJobById(jobId);
+  if (WIFEXITED(status) || WIFSIGNALED(status)) {
+    jobs.removeJobById(job->getJobId());
+    smash.clearForegroundPid();
+  } else if (WIFSTOPPED(status)) {
     smash.clearForegroundPid();
   }
-  return;
 }
 
 /**
