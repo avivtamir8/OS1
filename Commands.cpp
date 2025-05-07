@@ -123,28 +123,42 @@ SmallShell::SmallShell()
  * (e.g., built-in, redirection, pipe, external). It then constructs and returns the corresponding
  * Command object.
  * 
- * @param cmd_line The raw command line input as a C-string.
+ * @param cmd_line_cstr The raw command line input as a C-string.
  * @return A pointer to the created Command object.
  */
-Command *SmallShell::CreateCommand(const char *cmd_line) {
-  string cmd_s = _trim(string(cmd_line));
-  string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+Command *SmallShell::CreateCommand(const char *cmd_line_cstr) {
+  string cmd_s = _trim(string(cmd_line_cstr));
+  regex alias_definition_regex("^alias [a-zA-Z0-9_]+='[^']*'$");
 
-  // Handle alias expansion
-  auto aliasIt = aliasMap.find(firstWord);
-  if (aliasIt != aliasMap.end()) {
-    string expandedCommand = aliasIt->second;
-
-    // Append remaining arguments
-    string remainingArgs = cmd_s.substr(cmd_s.find_first_of(" \n") + 1);
-    if (!remainingArgs.empty()) {
-      expandedCommand += " " + _trim(remainingArgs);
-    }
-
-    // Re-assign the expanded command to cmd_s
-    cmd_s = _trim(expandedCommand);
-    firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+  // 1. Check if the entire command is an alias definition
+  if (regex_match(cmd_s, alias_definition_regex)) {
+    return new AliasCommand(cmd_s.c_str(), aliasMap);
   }
+
+  // 2. Attempt alias expansion (one level)
+  // Extract the first word for potential expansion
+  string first_word_for_expansion = cmd_s.substr(0, cmd_s.find_first_of(WHITESPACE));
+  auto aliasIt = aliasMap.find(first_word_for_expansion);
+
+  if (aliasIt != aliasMap.end()) { // first_word_for_expansion is an alias
+    string base_alias_command = aliasIt->second;
+    string remaining_args_str;
+    size_t first_word_len = first_word_for_expansion.length();
+
+    if (cmd_s.length() > first_word_len) {
+        // Check if character after firstWord is whitespace, implying arguments follow
+        char next_char = cmd_s[first_word_len];
+        // Check for any whitespace character using isspace
+        if (isspace(static_cast<unsigned char>(next_char))) { 
+            remaining_args_str = cmd_s.substr(first_word_len); // Includes leading whitespace
+        }
+    }
+    cmd_s = _trim(base_alias_command + remaining_args_str);
+    // cmd_s is now the expanded command string.
+  }
+
+  // 3. Proceed with parsing the (potentially expanded) command string cmd_s
+  string firstWord = cmd_s.substr(0, cmd_s.find_first_of(WHITESPACE));
 
   // Handle redirection commands
   if (cmd_s.find(">") != string::npos || cmd_s.find(">>") != string::npos) {
@@ -166,6 +180,8 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
   } else if (firstWord == "jobs") {
     return new JobsCommand(cmd_s.c_str(), jobs);
   } else if (firstWord == "alias") {
+    // This handles "alias" (to list aliases) or invalid alias definitions
+    // that were not caught by the regex, e.g., "alias name" or "alias name="
     return new AliasCommand(cmd_s.c_str(), aliasMap);
   } else if (firstWord == "unalias") {
     return new UnAliasCommand(cmd_s.c_str(), aliasMap);
@@ -499,54 +515,64 @@ void ForegroundCommand::execute() {
  * @return None (outputs results or error messages to standard output or error).
  */
 void AliasCommand::execute() {
-  // Trim the command line to handle any spaces
-  string commandLine = _trim(cmd_line); // TODO: no need the command line is already trimmed of spaces. how does this deal with &
+  // cmd_line is already trimmed by the Command constructor.
+  string commandLine = cmd_line; 
 
   // Case 1: If the command is exactly "alias" with no arguments
   if (commandLine == "alias") {
     // Print all aliases in the map
-    for (const auto& alias : aliasMap) {
-      cout << alias.first << "='" << alias.second << "'" << endl;
+    for (const auto& alias_pair : aliasMap) { // Renamed 'alias' to 'alias_pair' to avoid conflict
+      cout << alias_pair.first << "='" << alias_pair.second << "'" << endl;
     }
     return; // Exit after printing
   }
 
   // Case 2: Handle alias creation (alias <name>='<command>')
+  // This part assumes CreateCommand passed a string that either is "alias" 
+  // or starts with "alias " but might not be a fully valid definition yet.
+  // The regex check in CreateCommand handles strictly valid definitions.
+  // This code handles cases like "alias name" or "alias name=" which are invalid.
+
   size_t equalPos = commandLine.find('=');
-  if (equalPos == string::npos || equalPos < 6) { // Missing '=' or alias name
+  // The check for `equalPos < 6` (i.e., `alias ` is 6 chars) ensures `aliasName` is not empty.
+  if (equalPos == string::npos || commandLine.rfind("alias ", 0) != 0 || equalPos < strlen("alias ")) { 
     cerr << "smash error: alias: invalid alias format" << endl;
     return;
   }
+  
+  string aliasName = _trim(commandLine.substr(strlen("alias "), equalPos - strlen("alias ")));
+  string aliasCommandWithQuotes = _trim(commandLine.substr(equalPos + 1));
 
-  // Extract the alias name and command
-  string aliasName = _trim(commandLine.substr(6, equalPos - 6));
-  string aliasCommand = _trim(commandLine.substr(equalPos + 1));
-
-  // Validate alias name format
-  if (!regex_match(aliasName, regex("^[a-zA-Z0-9_]+$"))) {
+  // Validate alias name format (alphanumeric and underscores)
+  if (aliasName.empty() || !regex_match(aliasName, regex("^[a-zA-Z0-9_]+$"))) {
     cerr << "smash error: alias: invalid alias format" << endl;
     return;
   }
 
   // Check for proper quotes around the alias command
-  if (aliasCommand.length() < 2 || aliasCommand.front() != '\'' || aliasCommand.back() != '\'') {
+  if (aliasCommandWithQuotes.length() < 2 || aliasCommandWithQuotes.front() != '\'' || aliasCommandWithQuotes.back() != '\'') {
     cerr << "smash error: alias: invalid alias format" << endl;
     return;
   }
 
   // Remove surrounding quotes from the command
-  aliasCommand = aliasCommand.substr(1, aliasCommand.length() - 2);
+  string aliasCommandValue = aliasCommandWithQuotes.substr(1, aliasCommandWithQuotes.length() - 2);
 
-  // Validate that the command exists in the system's PATH
-  string commandToCheck = aliasCommand.substr(0, aliasCommand.find(' ')); // Extract the base command
-  if (system(("command -v " + commandToCheck + " > /dev/null 2>&1").c_str()) != 0) {
-    cerr << "smash error: alias: command '" << commandToCheck << "' not found" << endl;
-    return;
-  }
+  // PDF Note: "No need to check if <command> is legal."
+  // REMOVED: Validate that the command exists in the system's PATH
+  // string commandToCheck = aliasCommandValue.substr(0, aliasCommandValue.find(' ')); 
+  // if (system(("command -v " + commandToCheck + " > /dev/null 2>&1").c_str()) != 0) {
+  //   cerr << "smash error: alias: command '" << commandToCheck << "' not found" << endl;
+  //   return;
+  // }
 
   // Check for reserved keywords
   static const set<string> reservedKeywords = {
     "quit", "fg", "bg", "jobs", "kill", "cd", "listdir", "chprompt", "alias", "unalias", "pwd", "showpid"
+    // "listdir" might be an example, ensure this list matches your actual built-in commands.
+    // Added "bg" as it's a common shell command, though not explicitly in the PDF's list for this homework.
+    // For safety, stick to the PDF's examples or your implemented commands.
+    // The PDF example was "eg., `quit`, `lisdir` etc…)", so the current list is a good interpretation.
   };
 
   if (reservedKeywords.count(aliasName) || aliasMap.count(aliasName)) {
@@ -555,7 +581,7 @@ void AliasCommand::execute() {
   }
 
   // Add the alias to the map
-  aliasMap[aliasName] = aliasCommand;
+  aliasMap[aliasName] = aliasCommandValue;
 }
 
 /**
