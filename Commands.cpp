@@ -5,6 +5,7 @@
 #include <vector>
 #include <sstream>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <iomanip>
 #include <regex>
 #include <string>
@@ -15,8 +16,25 @@
 #include "Commands.h"
 #include <iterator>
 #include <time.h> 
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <cstring>
+#include <cerrno>
+#include <sys/syscall.h>
+#include <math.h>
 
 using namespace std;
+
+// Define linux_dirent64 structure manually
+struct linux_dirent64 {
+    ino64_t d_ino;          // Inode number
+    off64_t d_off;          // Offset to the next dirent
+    unsigned short d_reclen; // Length of this record
+    unsigned char d_type;   // File type
+    char d_name[];          // Filename (null-terminated)
+};
 
 const string WHITESPACE = " \n\r\t\f\v";
 
@@ -946,4 +964,72 @@ void WhoAmICommand::execute() {
 	else {
 		std::cerr << "smash error: whoami: failed to retrieve user information" << std::endl;
 	}
+}
+
+
+void DiskUsageCommand::execute() {
+  // Check if too many arguments are provided
+  if (args.size() > 2) {
+    cerr << "smash error: du: too many arguments" << endl;
+    return;
+  }
+
+  const char* path = (args.size() == 1) ? "." : args[1].c_str();
+  struct stat statbuf;
+  if (stat(path, &statbuf) == -1 || !S_ISDIR(statbuf.st_mode)) {
+    cerr << "smash error: du: directory " << path << " does not exist" << endl;
+    return;
+  }
+
+  long long total_usage_kb = calculateDiskUsage(path);
+  cout << "Total disk usage: " << total_usage_kb << " KB" << endl;
+}
+
+long long DiskUsageCommand::calculateDiskUsage(const char* path) {
+  /*
+  * we can use stat to get the size of file/dir
+  * but we need another way access the internal files / dirs
+  * we want to use opendir, readdir but were not allowed :(
+  * thats why well read this data "by hand" */
+  
+  long long total_size_kb = 0;
+
+  int dir_fd = open(path, O_RDONLY | O_DIRECTORY);
+  if (dir_fd == -1) {
+    return 0;
+  }
+
+  char buffer[4096];
+  struct linux_dirent64 *d_entry;
+  struct stat entry_statbuf;
+  int bytes_read;
+
+  while ((bytes_read = syscall(SYS_getdents64, dir_fd, buffer, sizeof(buffer))) > 0) { // read batch of entries
+    for (int offset = 0; offset < bytes_read;) { // iterate through the entries
+      
+      char* entry_ptr = buffer + offset; // Calculate the pointer to the current entry
+      d_entry = (struct linux_dirent64*)entry_ptr; // Cast to the desired type
+      string entry_name = d_entry->d_name;
+
+      if (entry_name == "." || entry_name == "..") {
+        continue;
+      }
+
+      string full_path = string(path) + "/" + entry_name;
+      if (stat(full_path.c_str(), &entry_statbuf) == -1) {
+        continue;
+      }
+
+      if (S_ISDIR(entry_statbuf.st_mode)) {
+        total_size_kb += calculateDiskUsage(full_path.c_str());
+      } else {
+        total_size_kb += ceil(static_cast<double>(entry_statbuf.st_size) / 1024);
+      }
+
+      offset += d_entry->d_reclen;
+    }
+  }
+
+  close(dir_fd);
+  return total_size_kb;
 }

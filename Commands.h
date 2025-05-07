@@ -228,6 +228,9 @@ public:
 };
 
 class DiskUsageCommand : public Command {
+private:
+    long long calculateDiskUsage(const char* path);
+
 public:
     explicit DiskUsageCommand(const char *cmd_line);
     virtual ~DiskUsageCommand() = default;
