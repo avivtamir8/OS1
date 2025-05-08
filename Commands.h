@@ -33,8 +33,12 @@ public:
     const string &getCmdLine() const { return cmd_line; }
     const vector<string> &getArgs() const { return args; }
     bool isBackground() const { return is_background; }
-    string getAlias() const;
-    void setAlias(const string& aliasCommand);
+    string getAlias() const {
+        return alias;
+    }
+    void setAlias(const string& aliasCommand) {
+        alias = aliasCommand;
+    }
 };
 
 /*
@@ -439,8 +443,12 @@ public:
     void setPrompt(const string &newPrompt) { prompt = newPrompt; }
     string getPrompt() const { return prompt; }
 
-    string getLastDir() const;
-    void setLastDir(const string &dir);
+    string getLastDir() const {
+        return lastWorkingDir;
+    }
+    void setLastDir(const string &dir) {
+        lastWorkingDir = dir;
+    }
 
     JobsList &getJobsList() { return jobs; }
 
@@ -449,9 +457,17 @@ public:
     string getAlias(const string& aliasName) const;
     void printAliases() const;
 
-    void setForegroundPid(pid_t pid);
-    pid_t getForegroundPid() const;
-    void clearForegroundPid();
+    void setForegroundPid(pid_t pid) {
+        foreground_pid = pid;
+        is_foreground_running = true;
+    }
+    pid_t getForegroundPid() const {
+        return is_foreground_running ? foreground_pid : -1;
+    }
+    void clearForegroundPid() {
+        foreground_pid = -1;
+        is_foreground_running = false;
+    }
 
 };
 

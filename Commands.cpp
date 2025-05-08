@@ -24,6 +24,8 @@
 #include <cerrno>
 #include <sys/syscall.h>
 #include <math.h>
+#include <unordered_set>
+
 
 using namespace std;
 
@@ -148,40 +150,56 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
 
   // Handle redirection commands
   if (cmd_s.find(">") != string::npos || cmd_s.find(">>") != string::npos) {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new RedirectionCommand(cmd_s.c_str());
   }
   // Handle pipe commands
   else if (cmd_s.find("|") != string::npos || cmd_s.find("|&") != string::npos) {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new PipeCommand(cmd_s.c_str());
   }
   // Handle built-in commands
   else if (firstWord == "chprompt") {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new ChPromptCommand(cmd_s.c_str());
   } else if (firstWord == "showpid") {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new ShowPidCommand(cmd_s.c_str());
   } else if (firstWord == "pwd") {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new GetCurrDirCommand(cmd_s.c_str());
   } else if (firstWord == "cd") {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new ChangeDirCommand(cmd_s.c_str());
   } else if (firstWord == "jobs") {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new JobsCommand(cmd_s.c_str(), jobs);
   } else if (firstWord == "alias") {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new AliasCommand(cmd_s.c_str(), aliasMap);
   } else if (firstWord == "unalias") {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new UnAliasCommand(cmd_s.c_str(), aliasMap);
   } else if (firstWord == "kill") {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new KillCommand(cmd_s.c_str(), jobs);
   } else if (firstWord == "quit") {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new QuitCommand(cmd_s.c_str(), jobs);
   } else if (firstWord == "fg") {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new ForegroundCommand(cmd_s.c_str(), jobs);
   } else if (firstWord == "unsetenv") {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new UnSetEnvCommand(cmd_s.c_str());
   } else if (firstWord == "watchproc") {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new WatchProcCommand(cmd_s.c_str());
   } else if (firstWord == "du")  {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new DiskUsageCommand(cmd_s.c_str());
   } else if (firstWord == "whoami") {
+    _removeBackgroundSign(&cmd_s[0]); // Remove background sign if present
     return new WhoAmICommand(cmd_s.c_str());
   }
   // Handle external commands
@@ -215,71 +233,6 @@ void SmallShell::executeCommand(const char *cmd_line) {
 }
 
 /**
- * @brief Retrieves the last working directory stored in the shell.
- * 
- * This function returns the last directory path that was set in the shell.
- * It is used to track the previous working directory for commands like "cd -".
- * 
- * @return A string representing the last working directory.
- */
-string SmallShell::getLastDir() const {
-  return lastWorkingDir;
-}
-
-/**
- * @brief Sets the last working directory for the shell.
- * 
- * This function updates the lastWorkingDir member variable with the provided directory path.
- * 
- * @param dir The directory path to set as the last working directory.
- * @return None.
- */
-void SmallShell::setLastDir(const string &dir) {
-  lastWorkingDir = dir;
-}
-
-/**
- * @brief Sets the foreground process ID and marks it as running.
- * 
- * This function updates the foreground process ID and sets the 
- * foreground running flag to true.
- * 
- * @param pid The process ID to set as the foreground process.
- * @return None.
- */
-void SmallShell::setForegroundPid(pid_t pid) {
-  foreground_pid = pid;
-  is_foreground_running = true;
-}
-
-/**
- * @brief Retrieves the PID of the current foreground process.
- * 
- * This function checks if a foreground process is currently running
- * and returns its PID. If no foreground process is running, it returns -1.
- * 
- * @return The PID of the foreground process, or -1 if no process is running.
- */
-pid_t SmallShell::getForegroundPid() const {
-  return is_foreground_running ? foreground_pid : -1; // Return -1 if no foreground process
-}
-
-/**
- * @brief Clears the foreground process ID and marks it as not running.
- * 
- * This function resets the foreground process ID to -1 and sets the 
- * foreground running flag to false, indicating that no process is 
- * currently running in the foreground.
- * 
- * @param None.
- * @return None.
- */
-void SmallShell::clearForegroundPid() {
-  foreground_pid = -1;
-  is_foreground_running = false;
-}
-
-/**
  * @brief Constructs a Command object by parsing the command line input.
  * 
  * This constructor initializes the Command object, determines if the command
@@ -300,32 +253,14 @@ Command::Command(const char *cmd_line_input)
   // Store the parsed arguments in the args vector
   for (int i = 0; i < argsCount; ++i) {
   args.push_back(string(raw_args[i]));
-  free(raw_args[i]); // Free the allocated memory for each argument
+    free(raw_args[i]); // Free the allocated memory for each argument
   }
 }
 
-/**
- * @brief Retrieves the alias associated with the command.
- * 
- * This function returns the alias string that is associated with the command.
- * 
- * @return The alias string of the command.
- */
-string Command::getAlias() const {
-  return alias;
-}
 
-/**
- * @brief Sets the alias for the command.
- * 
- * This function assigns the provided alias string to the command's alias member.
- * 
- * @param aliasCommand The alias string to be set for the command.
- * @return None.
- */
-void Command::setAlias(const string &aliasCommand) {
-  alias = aliasCommand;
-}
+/*******************************************************
+ *            BUILT-IN COMMAND IMPLEMENTATION          *
+ *******************************************************/
 
 /**
  * @brief Executes the ChPromptCommand to change the shell prompt.
@@ -372,7 +307,7 @@ void GetCurrDirCommand::execute() {
   if (getcwd(cwd, sizeof(cwd)) != nullptr) {
     cout << cwd << endl;
   } else {
-    perror("getcwd() error");
+    perror("smash error: getcwd failed");
   }
 }
 
@@ -439,6 +374,20 @@ void ChangeDirCommand::execute() {
 }
 
 /**
+ * @brief Executes the JobsCommand to display the list of active jobs.
+ * 
+ * This function removes any finished jobs from the jobs list and then
+ * prints the remaining active jobs to the standard output.
+ * 
+ * @param None (uses the jobs list stored in the `jobs` member).
+ * @return None (outputs the jobs list to the standard output).
+ */
+void JobsCommand::execute() {
+  jobs.removeFinishedJobs();
+  jobs.printJobsList();
+}
+
+/**
  * @brief Executes the ForegroundCommand to bring a job to the foreground.
  * 
  * This function validates the input arguments, retrieves the specified job,
@@ -488,6 +437,113 @@ void ForegroundCommand::execute() {
 }
 
 /**
+ * @brief Executes the QuitCommand to terminate the shell.
+ * 
+ * This function checks if the "kill" argument is provided. If so, it sends a SIGKILL signal
+ * to all remaining jobs in the jobs list, prints their details, and clears the jobs list.
+ * Finally, it exits the shell process.
+ * 
+ * @param None (uses the command-line arguments stored in the `args` member).
+ * @return None (terminates the shell process).
+ */
+void QuitCommand::execute() {
+  // Check if the "kill" argument is provided
+  bool killFlag = (args.size() > 1 && args[1] == "kill");
+
+  if (killFlag) {
+    // Remove finished jobs before killing
+    jobs.removeFinishedJobs();
+
+    // Get the list of remaining jobs
+    vector<JobsList::JobEntry*> remainingJobs = jobs.getJobs();
+
+    // Print the number of jobs to be killed
+    cout << "smash: sending SIGKILL signal to " << remainingJobs.size() << " jobs:" << endl;
+
+    // Iterate through the jobs and send SIGKILL
+    for (JobsList::JobEntry* job : remainingJobs) {
+      cout << job->getPid() << ": " << job->getCmdLine() << endl;
+      if (kill(job->getPid(), SIGKILL) == -1) {
+        perror("smash error: kill failed");
+        return;
+      }
+    }
+
+    // Clear the jobs list
+    jobs.clearJobs();
+  }
+
+  // Exit the shell
+  return;
+}
+
+/**
+ * @brief Executes the KillCommand to send a signal to a specific job's process.
+ * 
+ * This function validates the input arguments, retrieves the job by its ID, and sends
+ * the specified signal to the job's process. If the operation is successful, it prints
+ * a confirmation message. Otherwise, it displays appropriate error messages.
+ * 
+ * @param None (uses the command-line arguments stored in the `args` member).
+ * @return None (outputs success or error messages to standard output or error).
+ */
+void KillCommand::execute() {
+  // Validate the number of arguments
+  if (args.size() != 3 || args[1][0] != '-') {
+    cerr << "smash error: kill: invalid arguments" << endl;
+    return;
+  }
+
+  // Parse the signal number
+  int signum;
+  try {
+    signum = stoi(args[1].substr(1)); // Remove the '-' and convert to integer
+    if (signum <= 0 || signum >= NSIG) { // Validate signal number range
+      cerr << "smash error: kill: invalid signal number" << endl;
+      return;
+    }
+  } catch (const invalid_argument &e) {
+    cerr << "smash error: kill: invalid arguments" << endl;
+    return;
+  } catch (const out_of_range &e) {
+    cerr << "smash error: kill: invalid signal number" << endl;
+    return;
+  }
+
+  // Parse the job ID
+  int jobId;
+  try {
+    jobId = stoi(args[2]);
+    if (jobId <= 0) { // Validate job ID is positive
+      cerr << "smash error: kill: invalid job-id" << endl;
+      return;
+    }
+  } catch (const invalid_argument &e) {
+    cerr << "smash error: kill: invalid arguments" << endl;
+    return;
+  } catch (const out_of_range &e) {
+    cerr << "smash error: kill: invalid job-id" << endl;
+    return;
+  }
+
+  // Find the job by ID
+  JobsList::JobEntry *job = jobs.getJobById(jobId);
+  if (!job) {
+    cerr << "smash error: kill: job-id " << jobId << " does not exist" << endl;
+    return;
+  }
+
+  // Send the signal to the job's process
+  if (kill(job->getPid(), signum) == -1) {
+    perror("smash error: kill failed");
+    return;
+  }
+
+  // Print success message
+  cout << "signal number " << signum << " was sent to pid " << job->getPid() << endl;
+}
+
+/**
  * @brief Handles the alias command to create, list, or validate aliases.
  * 
  * This function processes the alias command to either list all aliases,
@@ -500,7 +556,7 @@ void ForegroundCommand::execute() {
  */
 void AliasCommand::execute() {
   // Trim the command line to handle any spaces
-  string commandLine = _trim(cmd_line); // TODO: no need the command line is already trimmed of spaces. how does this deal with &
+  string commandLine = _trim(cmd_line);
 
   // Case 1: If the command is exactly "alias" with no arguments
   if (commandLine == "alias") {
@@ -623,18 +679,362 @@ void SmallShell::printAliases() const {
 }
 
 /**
- * @brief Executes the JobsCommand to display the list of active jobs.
+ * @brief Removes one or more aliases from the alias map.
  * 
- * This function removes any finished jobs from the jobs list and then
- * prints the remaining active jobs to the standard output.
+ * This function checks if the provided alias names exist in the alias map.
+ * If an alias exists, it is removed. If an alias does not exist, an error
+ * message is displayed.
  * 
- * @param None (uses the jobs list stored in the `jobs` member).
- * @return None (outputs the jobs list to the standard output).
+ * @param None (uses the command-line arguments stored in the `args` member).
+ * @return None (outputs error messages to standard error if applicable).
  */
-void JobsCommand::execute() {
-  jobs.removeFinishedJobs();
-  jobs.printJobsList();
+void UnAliasCommand::execute() {
+  // Check if arguments are provided
+  if (args.size() < 2) {
+    cerr << "smash error: unalias: not enough arguments" << endl;
+    return;
+  }
+
+  // Iterate through the provided alias names
+  for (size_t i = 1; i < args.size(); ++i) {
+    const string& aliasName = args[i];
+
+    // Check if the alias exists
+    if (aliasMap.find(aliasName) == aliasMap.end()) {
+      cerr << "smash error: unalias: " << aliasName << " alias does not exist" << endl;
+      return;
+    }
+
+    // Remove the alias from the map
+    aliasMap.erase(aliasName);
+  }
 }
+
+/**
+ * @brief Unsets environment variables specified in the command arguments.
+ * 
+ * This function removes one or more environment variables from the environment
+ * by directly manipulating the `__environ` array. If a variable does not exist
+ * or an error occurs during removal, an appropriate error message is displayed.
+ * 
+ * @param None (uses the command-line arguments stored in the `args` member).
+ * @return None (outputs error messages to standard error if applicable).
+ */
+void UnSetEnvCommand::execute() {
+  // Static set to track removed variables
+  static unordered_set<string> removedVariables;
+
+  // Check if arguments are provided
+  if (args.size() < 2) {
+    cerr << "smash error: unsetenv: not enough arguments" << endl;
+    return;
+  }
+
+  // Iterate through the provided environment variable names
+  for (size_t i = 1; i < args.size(); ++i) {
+    const string &varName = args[i];
+
+    // Check if the variable has already been removed
+    if (removedVariables.find(varName) != removedVariables.end()) {
+      cerr << "smash error: unsetenv: " << varName << " does not exist" << endl;
+      continue;
+    }
+
+    // Check if the environment variable exists by scanning /proc/<pid>/environ
+    string environ_path = "/proc/" + to_string(getpid()) + "/environ";
+    int fd = open(environ_path.c_str(), O_RDONLY);
+    if (fd == -1) {
+      perror("smash error: open failed");
+      return;
+    }
+
+    char buffer[4096];
+    ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+    if (bytes_read == -1) {
+      perror("smash error: read failed");
+      if (close(fd) == -1) {
+        perror("smash error: close failed");
+      }
+      return;
+    }
+
+    if (close(fd) == -1) {
+      perror("smash error: close failed");
+      return;
+    }
+
+    buffer[bytes_read] = '\0'; // Null-terminate the buffer
+    bool var_exists = false;
+    char *entry = buffer; // Start scanning from the beginning of the buffer
+    while (*entry != '\0') {
+      if (strncmp(entry, varName.c_str(), varName.size()) == 0 && entry[varName.size()] == '=') {
+        var_exists = true;
+        break;
+      }
+      entry += strlen(entry) + 1; // Move to the next entry
+    }
+
+    if (!var_exists) {
+      cerr << "smash error: unsetenv: " << varName << " does not exist" << endl;
+      removedVariables.insert(varName); // Mark as removed to avoid future checks
+      continue;
+    }
+
+    // Remove the environment variable by directly manipulating __environ
+    extern char **environ;
+    size_t env_size = 0;
+    while (environ[env_size] != nullptr) {
+      ++env_size;
+    }
+
+    bool removed = false;
+    for (size_t j = 0; j < env_size; ++j) {
+      if (strncmp(environ[j], varName.c_str(), varName.size()) == 0 && environ[j][varName.size()] == '=') {
+        // Shift the remaining environment variables down
+        for (size_t k = j; k < env_size - 1; ++k) {
+          environ[k] = environ[k + 1];
+        }
+        environ[env_size - 1] = nullptr; // Null-terminate the array
+        removed = true;
+        break;
+      }
+    }
+
+    if (!removed) {
+      cerr << "smash error: unsetenv: failed to remove " << varName << endl;
+      return;
+    }
+
+    // Add the variable to the removed set
+    removedVariables.insert(varName);
+  }
+}
+
+/**
+ * @brief Monitors the CPU and memory usage of a specific process.
+ * 
+ * This function takes a process ID (PID) as input, validates its existence, and calculates
+ * the CPU and memory usage of the process over a 1-second interval. The results are displayed
+ * in a formatted output.
+ * 
+ * @note The function assumes the PID is valid and accessible in the /proc filesystem.
+ * 
+ * @param None (uses the command-line arguments stored in the `args` member).
+ * @return None (outputs the results to the standard output or error messages to standard error).
+ */
+void WatchProcCommand::execute() {
+  // Validate the number of arguments
+  if (args.size() != 2) {
+    cerr << "smash error: watchproc: invalid arguments" << endl;
+    return;
+  }
+
+  // Parse the PID
+  pid_t pid;
+  try {
+    pid = stoi(args[1]);
+    if (pid <= 0) { // Ensure PID is positive
+      cerr << "smash error: watchproc: invalid arguments" << endl;
+      return;
+    }
+  } catch (const invalid_argument &e) {
+    cerr << "smash error: watchproc: invalid arguments" << endl;
+    return;
+  } catch (const out_of_range &e) {
+    cerr << "smash error: watchproc: invalid arguments" << endl;
+    return;
+  }
+
+  // Check if the process exists
+  string proc_path = "/proc/" + to_string(pid) + "/stat";
+  int fd = open(proc_path.c_str(), O_RDONLY);
+  if (fd == -1) {
+    cerr << "smash error: watchproc: pid " << pid << " does not exist" << endl;
+    return;
+  }
+  if (close(fd) == -1) {
+    perror("smash error: close failed");
+  }
+
+  // Read initial CPU and system times
+  long long prev_proc_time = 0, prev_total_time = 0;
+  if (!readCpuTimes(pid, prev_proc_time, prev_total_time)) {
+    cerr << "smash error: watchproc failed" << endl;
+    return;
+  }
+
+  // Wait for 1 second to calculate deltas
+  struct timespec req = {1, 0}; // 1 second, 0 nanoseconds
+  if (nanosleep(&req, nullptr) == -1) {
+    perror("smash error: nanosleep failed");
+    return;
+  }
+  
+  // Read current CPU and system times
+  long long curr_proc_time = 0, curr_total_time = 0;
+  if (!readCpuTimes(pid, curr_proc_time, curr_total_time)) {
+    cerr << "smash error: watchproc: pid " << pid << " does not exist" << endl;
+    return;
+  }
+
+  // Calculate CPU usage
+  double cpu_usage = 100.0 * (curr_proc_time - prev_proc_time) / (curr_total_time - prev_total_time);
+
+  // Read memory usage
+  double memory_usage = readMemoryUsage(pid);
+
+  // Display the results
+  cout << "PID: " << pid
+     << " | CPU Usage: " << fixed << setprecision(1) << cpu_usage << "%"
+     << " | Memory Usage: " << fixed << setprecision(1) << memory_usage << " MB" << endl;
+}
+
+/**
+ * @brief Reads the CPU times for a specific process and the total system CPU time.
+ * 
+ * This function retrieves the CPU usage information for a given process by reading
+ * the /proc/<pid>/stat file and calculates the total system CPU time from /proc/stat.
+ * 
+ * @param pid The process ID whose CPU times are to be read.
+ * @param proc_time Reference to store the process CPU time (user + kernel mode).
+ * @param total_time Reference to store the total system CPU time.
+ * @return True if the CPU times were successfully read, false otherwise.
+ */
+bool WatchProcCommand::readCpuTimes(pid_t pid, long long &proc_time, long long &total_time) {
+  // Read process CPU time from /proc/<pid>/stat
+  string proc_stat_path = "/proc/" + to_string(pid) + "/stat";
+  int fd = open(proc_stat_path.c_str(), O_RDONLY);
+  if (fd == -1) {
+    perror("smash error: open failed");
+    return false;
+  }
+
+  char buffer[1024]; // Buffer size sufficient for /proc/<pid>/stat content
+  ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+  if (close(fd) == -1) {
+    perror("smash error: close failed");
+  }
+
+  if (bytes_read <= 0) {
+    return false;
+  }
+  buffer[bytes_read] = '\0'; // Null-terminate the buffer
+
+  istringstream iss(buffer);
+  vector<string> tokens((istream_iterator<string>(iss)), istream_iterator<string>());
+
+  if (tokens.size() < 17) {
+    return false;
+  }
+
+  // Parse user and kernel mode times
+  long utime, stime;
+  try {
+    utime = stoll(tokens[13]); // User mode time
+    stime = stoll(tokens[14]); // Kernel mode time
+  } catch (const invalid_argument &e) {
+    cerr << "smash error: watchproc: invalid arguments" << endl;
+    return false;
+  } catch (const out_of_range &e) {
+    cerr << "smash error: watchproc: invalid arguments" << endl;
+    return false;
+  }
+  proc_time = utime + stime;
+
+  // Read total CPU time from /proc/stat
+  fd = open("/proc/stat", O_RDONLY);
+  if (fd == -1) {
+    perror("smash error: open failed");
+    return false;
+  }
+
+  bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+  if (close(fd) == -1) {
+    perror("smash error: close failed");
+  }
+  if (bytes_read <= 0) {
+    return false;
+  }
+  buffer[bytes_read] = '\0'; // Null-terminate the buffer
+
+  iss.clear();
+  iss.str(buffer);
+  string line;
+  getline(iss, line); // Read the first line (CPU stats)
+
+  istringstream stat_iss(line);
+  string cpu_label;
+  stat_iss >> cpu_label; // Skip "cpu"
+
+  long long user, nice, system, idle, iowait, irq, softirq, steal;
+  stat_iss >> user >> nice >> system >> idle >> iowait >> irq >> softirq >> steal;
+
+  total_time = user + nice + system + idle + iowait + irq + softirq + steal;
+
+  return true;
+}
+
+/**
+ * @brief Reads the memory usage of a process in megabytes (MB).
+ * 
+ * This function retrieves the Resident Set Size (VmRSS) of a process
+ * from the /proc/<pid>/status file, which represents the physical memory
+ * used by the process.
+ * 
+ * @param pid The process ID whose memory usage is to be read.
+ * @return The memory usage in MB as a double. Returns 0.0 if the process
+ *         does not exist or an error occurs.
+ */
+double WatchProcCommand::readMemoryUsage(pid_t pid) {
+  // Construct the path to the process's status file
+  string proc_status_path = "/proc/" + to_string(pid) + "/status";
+
+  // Open the status file
+  int fd = open(proc_status_path.c_str(), O_RDONLY);
+  if (fd == -1) {
+    perror("smash error: open failed");
+    return 0.0;
+  }
+
+  // Read the contents of the status file
+  char buffer[4096];
+  ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+  if (close(fd) == -1) {
+    perror("smash error: close failed");
+  }
+  if (bytes_read <= 0) {
+    return 0.0;
+  }
+
+  // Null-terminate the buffer
+  buffer[bytes_read] = '\0';
+
+  // Parse the file line by line
+  istringstream iss(buffer);
+  string line;
+  while (getline(iss, line)) {
+    // Look for the "VmRSS" field
+    if (line.find("VmRSS:") == 0) {
+      istringstream line_iss(line);
+      string key;
+      long memory_kb;
+      string unit;
+
+      // Extract the memory value in kilobytes
+      line_iss >> key >> memory_kb >> unit;
+
+      // Convert KB to MB and return
+      return memory_kb / 1024.0;
+    }
+  }
+
+  // Return 0.0 if VmRSS is not found
+  return 0.0;
+}
+
+/*******************************************************
+ *            EXTERNAL COMMANDS IMPLEMENTATION         *
+ *******************************************************/
 
 /**
  * @brief Executes an external command, handling both foreground and background processes.
@@ -673,14 +1073,14 @@ void SimpleExternalCommand::execute() {
       for (int i = 0; i < argsCount; ++i) {
         free(args[i]);
       }
-      exit(1);
+      return;
     }
 
     // Free allocated memory (in case execvp fails unexpectedly)
     for (int i = 0; i < argsCount; ++i) {
       free(args[i]);
     }
-    exit(0);
+    return;
   } else {
     // Parent process
     SmallShell &smash = SmallShell::getInstance();
@@ -729,7 +1129,7 @@ void ComplexExternalCommand::execute() {
     const char *args[] = {"/bin/bash", "-c", cmd_line_copy.c_str(), nullptr};
     if (execvp(args[0], const_cast<char *const *>(args)) == -1) {
       perror("smash error: execvp failed");
-      exit(1);
+      return;
     }
   } else {
     // Parent process
@@ -750,357 +1150,10 @@ void ComplexExternalCommand::execute() {
   }
 }
 
-/**
- * @brief Removes one or more aliases from the alias map.
- * 
- * This function checks if the provided alias names exist in the alias map.
- * If an alias exists, it is removed. If an alias does not exist, an error
- * message is displayed.
- * 
- * @param None (uses the command-line arguments stored in the `args` member).
- * @return None (outputs error messages to standard error if applicable).
- */
-void UnAliasCommand::execute() {
-  // Check if arguments are provided
-  if (args.size() < 2) {
-    cerr << "smash error: unalias: not enough arguments" << endl;
-    return;
-  }
 
-  // Iterate through the provided alias names
-  for (size_t i = 1; i < args.size(); ++i) {
-    const string& aliasName = args[i];
-
-    // Check if the alias exists
-    if (aliasMap.find(aliasName) == aliasMap.end()) {
-      cerr << "smash error: unalias: " << aliasName << " alias does not exist" << endl;
-      return;
-    }
-
-    // Remove the alias from the map
-    aliasMap.erase(aliasName);
-  }
-}
-
-/**
- * @brief Executes the KillCommand to send a signal to a specific job's process.
- * 
- * This function validates the input arguments, retrieves the job by its ID, and sends
- * the specified signal to the job's process. If the operation is successful, it prints
- * a confirmation message. Otherwise, it displays appropriate error messages.
- * 
- * @param None (uses the command-line arguments stored in the `args` member).
- * @return None (outputs success or error messages to standard output or error).
- */
-void KillCommand::execute() {
-  // Validate the number of arguments
-  if (args.size() != 3 || args[1][0] != '-') {
-    cerr << "smash error: kill: invalid arguments" << endl;
-    return;
-  }
-
-  // Parse the signal number
-  int signum;
-  try {
-    signum = stoi(args[1].substr(1)); // Remove the '-' and convert to integer
-  } catch (const invalid_argument &e) {
-    cerr << "smash error: kill: invalid arguments" << endl;
-    return;
-  }
-
-  // Parse the job ID
-  int jobId;
-  try {
-    jobId = stoi(args[2]);
-  } catch (const invalid_argument &e) {
-    cerr << "smash error: kill: invalid arguments" << endl;
-    return;
-  }
-
-  // Find the job by ID
-  JobsList::JobEntry *job = jobs.getJobById(jobId);
-  if (!job) {
-    cerr << "smash error: kill: job-id " << jobId << " does not exist" << endl;
-    return;
-  }
-
-  // Send the signal to the job's process
-  if (kill(job->getPid(), signum) == -1) {
-    perror("smash error: kill failed");
-    return;
-  }
-
-  // Print success message
-  cout << "signal number " << signum << " was sent to pid " << job->getPid() << endl;
-}
-
-/**
- * @brief Executes the QuitCommand to terminate the shell.
- * 
- * This function checks if the "kill" argument is provided. If so, it sends a SIGKILL signal
- * to all remaining jobs in the jobs list, prints their details, and clears the jobs list.
- * Finally, it exits the shell process.
- * 
- * @param None (uses the command-line arguments stored in the `args` member).
- * @return None (terminates the shell process).
- */
-void QuitCommand::execute() {
-  // Check if the "kill" argument is provided
-  bool killFlag = (args.size() > 1 && args[1] == "kill");
-
-  if (killFlag) {
-    // Remove finished jobs before killing
-    jobs.removeFinishedJobs();
-
-    // Get the list of remaining jobs
-    vector<JobsList::JobEntry*> remainingJobs = jobs.getJobs();
-
-    // Print the number of jobs to be killed
-    cout << "smash: sending SIGKILL signal to " << remainingJobs.size() << " jobs:" << endl;
-
-    // Iterate through the jobs and send SIGKILL
-    for (JobsList::JobEntry* job : remainingJobs) {
-      cout << job->getPid() << ": " << job->getCmdLine() << endl;
-      if (kill(job->getPid(), SIGKILL) == -1) {
-        perror("smash error: kill failed");
-      }
-    }
-
-    // Clear the jobs list
-    jobs.clearJobs();
-  }
-
-  // Exit the shell
-  exit(0);
-}
-
-/**
- * @brief Unsets environment variables specified in the command arguments.
- * 
- * This function removes one or more environment variables from the environment.
- * If a variable does not exist or an error occurs during removal, an appropriate
- * error message is displayed.
- * 
- * @param None (uses the command-line arguments stored in the `args` member).
- * @return None (outputs error messages to standard error if applicable).
- */
-void UnSetEnvCommand::execute() {
-  // Check if arguments are provided
-  if (args.size() < 2) {
-    cerr << "smash error: unsetenv: not enough arguments" << endl;
-    return;
-  }
-
-  // Iterate through the provided environment variable names
-  for (size_t i = 1; i < args.size(); ++i) {
-    const string &varName = args[i];
-
-    // Check if the environment variable exists
-    if (getenv(varName.c_str()) == nullptr) {
-      cerr << "smash error: unsetenv: " << varName << " does not exist" << endl;
-      return;
-    }
-
-    // Remove the environment variable using unsetenv()
-    if (unsetenv(varName.c_str()) != 0) {
-      perror("smash error: unsetenv failed");
-      return;
-    }
-  }
-}
-
-/**
- * @brief Monitors the CPU and memory usage of a specific process.
- * 
- * This function takes a process ID (PID) as input, validates its existence, and calculates
- * the CPU and memory usage of the process over a 1-second interval. The results are displayed
- * in a formatted output.
- * 
- * @note The function assumes the PID is valid and accessible in the /proc filesystem.
- * 
- * @param None (uses the command-line arguments stored in the `args` member).
- * @return None (outputs the results to the standard output or error messages to standard error).
- */
-void WatchProcCommand::execute() {
-  // Validate the number of arguments
-  if (args.size() != 2) {
-    cerr << "smash error: watchproc: invalid arguments" << endl;
-    return;
-  }
-
-  // Parse the PID
-  pid_t pid;
-  try {
-    pid = stoi(args[1]);
-  } catch (const invalid_argument &e) {
-    cerr << "smash error: watchproc: invalid arguments" << endl;
-    return;
-  }
-
-  // Check if the process exists
-  string proc_path = "/proc/" + to_string(pid) + "/stat";
-  int fd = open(proc_path.c_str(), O_RDONLY);
-  if (fd == -1) {
-    cerr << "smash error: watchproc: pid " << pid << " does not exist" << endl;
-    return;
-  }
-  close(fd);
-
-  // Read initial CPU and system times
-  long long prev_proc_time = 0, prev_total_time = 0;
-  if (!readCpuTimes(pid, prev_proc_time, prev_total_time)) {
-    cerr << "smash error: watchproc: failed to read process or system CPU times" << endl;
-    return;
-  }
-
-  // Wait for 1 second to calculate deltas
-  struct timespec req = {1, 0}; // 1 second, 0 nanoseconds
-  nanosleep(&req, nullptr);
-
-  // Read current CPU and system times
-  long long curr_proc_time = 0, curr_total_time = 0;
-  if (!readCpuTimes(pid, curr_proc_time, curr_total_time)) {
-    cerr << "smash error: watchproc: pid " << pid << " does not exist" << endl;
-    return;
-  }
-
-  // Calculate CPU usage
-  double cpu_usage = 100.0 * (curr_proc_time - prev_proc_time) / (curr_total_time - prev_total_time);
-
-  // Read memory usage
-  double memory_usage = readMemoryUsage(pid);
-
-  // Display the results
-  cout << "PID: " << pid
-     << " | CPU Usage: " << fixed << setprecision(1) << cpu_usage << "%"
-     << " | Memory Usage: " << fixed << setprecision(1) << memory_usage << " MB" << endl;
-}
-
-/**
- * @brief Reads the CPU times for a specific process and the total system CPU time.
- * 
- * This function retrieves the CPU usage information for a given process by reading
- * the /proc/<pid>/stat file and calculates the total system CPU time from /proc/stat.
- * 
- * @param pid The process ID whose CPU times are to be read.
- * @param proc_time Reference to store the process CPU time (user + kernel mode).
- * @param total_time Reference to store the total system CPU time.
- * @return True if the CPU times were successfully read, false otherwise.
- */
-bool WatchProcCommand::readCpuTimes(pid_t pid, long long &proc_time, long long &total_time) {
-  // Read process CPU time from /proc/<pid>/stat
-  string proc_stat_path = "/proc/" + to_string(pid) + "/stat";
-  int fd = open(proc_stat_path.c_str(), O_RDONLY);
-  if (fd == -1) {
-    return false;
-  }
-
-  char buffer[1024]; // Buffer size sufficient for /proc/<pid>/stat content
-  ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
-  close(fd);
-
-  if (bytes_read <= 0) {
-    return false;
-  }
-  buffer[bytes_read] = '\0'; // Null-terminate the buffer
-
-  istringstream iss(buffer);
-  vector<string> tokens((istream_iterator<string>(iss)), istream_iterator<string>());
-
-  if (tokens.size() < 17) {
-    return false;
-  }
-
-  long utime = stoll(tokens[13]); // User mode time
-  long stime = stoll(tokens[14]); // Kernel mode time
-  proc_time = utime + stime;
-
-  // Read total CPU time from /proc/stat
-  fd = open("/proc/stat", O_RDONLY);
-  if (fd == -1) {
-    return false;
-  }
-
-  bytes_read = read(fd, buffer, sizeof(buffer) - 1);
-  close(fd);
-
-  if (bytes_read <= 0) {
-    return false;
-  }
-  buffer[bytes_read] = '\0'; // Null-terminate the buffer
-
-  iss.clear();
-  iss.str(buffer);
-  string line;
-  getline(iss, line); // Read the first line (CPU stats)
-
-  istringstream stat_iss(line);
-  string cpu_label;
-  stat_iss >> cpu_label; // Skip "cpu"
-
-  long long user, nice, system, idle, iowait, irq, softirq, steal;
-  stat_iss >> user >> nice >> system >> idle >> iowait >> irq >> softirq >> steal;
-
-  total_time = user + nice + system + idle + iowait + irq + softirq + steal;
-
-  return true;
-}
-
-/**
- * @brief Reads the memory usage of a process in megabytes (MB).
- * 
- * This function retrieves the Resident Set Size (VmRSS) of a process
- * from the /proc/<pid>/status file, which represents the physical memory
- * used by the process.
- * 
- * @param pid The process ID whose memory usage is to be read.
- * @return The memory usage in MB as a double. Returns 0.0 if the process
- *         does not exist or an error occurs.
- */
-double WatchProcCommand::readMemoryUsage(pid_t pid) {
-  // Construct the path to the process's status file
-  string proc_status_path = "/proc/" + to_string(pid) + "/status";
-
-  // Open the status file
-  int fd = open(proc_status_path.c_str(), O_RDONLY);
-  if (fd == -1) {
-    return 0.0;
-  }
-
-  // Read the contents of the status file
-  char buffer[4096];
-  ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
-  close(fd);
-
-  if (bytes_read <= 0) {
-    return 0.0;
-  }
-
-  // Null-terminate the buffer
-  buffer[bytes_read] = '\0';
-
-  // Parse the file line by line
-  istringstream iss(buffer);
-  string line;
-  while (getline(iss, line)) {
-    // Look for the "VmRSS" field
-    if (line.find("VmRSS:") == 0) {
-      istringstream line_iss(line);
-      string key;
-      long memory_kb;
-      string unit;
-
-      // Extract the memory value in kilobytes
-      line_iss >> key >> memory_kb >> unit;
-
-      // Convert KB to MB and return
-      return memory_kb / 1024.0;
-    }
-  }
-
-  // Return 0.0 if VmRSS is not found
-  return 0.0;
-}
+/*******************************************************
+ *              SPECIAL COMMANDS IMPLEMENTATION        *
+ *******************************************************/
 
 /**
  * @brief Executes a redirection command, redirecting the output of a command to a file.
@@ -1153,23 +1206,33 @@ void RedirectionCommand::execute() {
   int file_fd = open(output_file.c_str(), flags, 0666);
   if (file_fd == -1) {
     perror("smash error: open failed");
-    close(original_stdout_fd);
+    if (close(original_stdout_fd) == -1) {
+      perror("smash error: close failed");
+    }
     return;
   }
 
   // Redirect stdout to the target file
   if (dup2(file_fd, STDOUT_FILENO) == -1) {
     perror("smash error: dup2 failed");
-    close(original_stdout_fd);
-    close(file_fd);
+    if (close(original_stdout_fd) == -1) {
+      perror("smash error: close failed");
+    }
+    if (close(file_fd) == -1) {
+      perror("smash error: close failed");
+    }
     return;
   }
 
   // Close the file descriptor for the target file
   if (close(file_fd) == -1) {
     perror("smash error: close failed");
-    dup2(original_stdout_fd, STDOUT_FILENO); // Restore original stdout
-    close(original_stdout_fd);
+    if (dup2(original_stdout_fd, STDOUT_FILENO) == -1) {  // Restore original stdout
+      perror("smash error: dup2 failed");
+    }
+    if (close(original_stdout_fd) == -1) {
+      perror("smash error: close failed");
+    }
     return;
   }
 
@@ -1181,14 +1244,16 @@ void RedirectionCommand::execute() {
 
   // Restore the original stdout
   if (dup2(original_stdout_fd, STDOUT_FILENO) == -1) {
-    perror("smash error: dup2 failed to restore stdout");
-    close(original_stdout_fd);
+    perror("smash error: dup2 failed");
+    if (close(original_stdout_fd) == -1) {
+      perror("smash error: close failed");
+    }
     return;
   }
 
   // Close the backup file descriptor
   if (close(original_stdout_fd) == -1) {
-    perror("smash error: close failed for original stdout fd");
+    perror("smash error: close failed");
   }
 }
 
@@ -1241,8 +1306,12 @@ void PipeCommand::execute() {
   pid_t pid1 = fork();
   if (pid1 == -1) {
     perror("smash error: fork failed");
-    close(pipe_fd[0]);
-    close(pipe_fd[1]);
+    if (close(pipe_fd[0]) == -1) {
+      perror("smash error: close failed");
+    }    
+    if (close(pipe_fd[1]) == -1) {
+      perror("smash error: close failed");
+    }
     return;
   }
 
@@ -1251,25 +1320,37 @@ void PipeCommand::execute() {
     setpgrp();
     int target_fd_for_cmd1_output = error_mode ? STDERR_FILENO : STDOUT_FILENO;
     if (dup2(pipe_fd[1], target_fd_for_cmd1_output) == -1) {
-      perror("smash error: dup2 failed for command1 output");
-      close(pipe_fd[0]);
-      close(pipe_fd[1]);
-      exit(1);
+      perror("smash error: dup2 failed");
+      if (close(pipe_fd[0]) == -1) {
+        perror("smash error: close failed");
+      }    
+      if (close(pipe_fd[1]) == -1) {
+        perror("smash error: close failed");
+      }
+      return;
     }
-    close(pipe_fd[0]);
-    close(pipe_fd[1]);
+    if (close(pipe_fd[0]) == -1) {
+      perror("smash error: close failed");
+    }    
+    if (close(pipe_fd[1]) == -1) {
+      perror("smash error: close failed");
+    }
     smash.executeCommand(command_1.c_str());
-    exit(0);
+    return;
   }
 
   // Fork the second child process
   pid_t pid2 = fork();
   if (pid2 == -1) {
-    perror("smash error: fork failed for command2");
+    perror("smash error: fork failed");
     kill(pid1, SIGINT); // Clean up first child if it was successfully forked
     waitpid(pid1, nullptr, 0);
-    close(pipe_fd[0]);
-    close(pipe_fd[1]);
+    if (close(pipe_fd[0]) == -1) {
+      perror("smash error: close failed");
+    }    
+    if (close(pipe_fd[1]) == -1) {
+      perror("smash error: close failed");
+    }
     return;
   }
 
@@ -1277,54 +1358,41 @@ void PipeCommand::execute() {
     // Child 2: Executes command_2
     setpgrp();
     if (dup2(pipe_fd[0], STDIN_FILENO) == -1) {
-      perror("smash error: dup2 failed for command2 input");
-      close(pipe_fd[0]);
-      close(pipe_fd[1]);
-      exit(1);
+      perror("smash error: dup2 failed");
+      if (close(pipe_fd[0]) == -1) {
+        perror("smash error: close failed");
+      }    
+      if (close(pipe_fd[1]) == -1) {
+        perror("smash error: close failed");
+      }
+      return;
     }
-    close(pipe_fd[1]);
-    close(pipe_fd[0]);
+    if (close(pipe_fd[0]) == -1) {
+      perror("smash error: close failed");
+    }    
+    if (close(pipe_fd[1]) == -1) {
+      perror("smash error: close failed");
+    }
     smash.executeCommand(command_2.c_str());
-    exit(0);
+    return;
   }
 
   // Parent process: Close pipe and wait for both children
-  close(pipe_fd[0]);
-  close(pipe_fd[1]);
+  if (close(pipe_fd[0]) == -1) {
+    perror("smash error: close failed");
+  }    
+  if (close(pipe_fd[1]) == -1) {
+    perror("smash error: close failed");
+  }
 
   int status1, status2;
   if (waitpid(pid1, &status1, 0) == -1) {
-    perror("smash error: waitpid failed for command1");
+    perror("smash error: waitpid failed");
   }
   if (waitpid(pid2, &status2, 0) == -1) {
-    perror("smash error: waitpid failed for command2");
+    perror("smash error: waitpid failed");
   }
 }
-
-/**
- * @brief Executes the WhoAmICommand to retrieve and display the current user's information.
- *
- * This function retrieves the username and home directory of the current user
- * by accessing the "USER" and "HOME" environment variables, respectively. If both
- * variables are successfully retrieved, it prints the username and home directory
- * to the standard output. If either variable cannot be retrieved, it prints an error
- * message to the standard error output.
- *
- * @note This command relies on the presence of the "USER" and "HOME" environment variables.
- *       If these variables are not set, the function will fail to retrieve the user information.
- */
-void WhoAmICommand::execute() {
-  char* username = getenv("USER"); // Retrieve the USER environment variable
-	char* homeDir = getenv("HOME");  // Retrieve the HOME environment variable
-
-	if (username && homeDir) {
-		std::cout << username << " " << homeDir << std::endl;
-	}
-	else {
-		std::cerr << "smash error: whoami: failed to retrieve user information" << std::endl;
-	}
-}
-
 
 /**
  * @brief Executes the DiskUsageCommand to calculate and display the total disk usage of a directory.
@@ -1363,7 +1431,6 @@ void DiskUsageCommand::execute() {
   cout << "Total disk usage: " << total_usage_kb << " KB" << endl;
 }
 
-
 /**
  * @brief Recursively calculates the total disk usage of a directory and its contents.
  * 
@@ -1380,6 +1447,7 @@ long long DiskUsageCommand::calculateDiskUsage(const char* path) {
   // Open the directory
   int dir_fd = open(path, O_RDONLY | O_DIRECTORY);
   if (dir_fd == -1) {
+    perror("smash error: open failed");
     return 0;
   }
 
@@ -1406,6 +1474,7 @@ long long DiskUsageCommand::calculateDiskUsage(const char* path) {
 
       // Retrieve metadata for the entry
       if (lstat(full_path.c_str(), &entry_statbuf) == -1) {
+        perror("smash error: lstat failed");
         offset += d_entry->d_reclen;
         continue;
       }
@@ -1424,6 +1493,81 @@ long long DiskUsageCommand::calculateDiskUsage(const char* path) {
   }
 
   // Close the directory
-  close(dir_fd);
+  if (close(dir_fd) == -1) {
+    perror("smash error: close failed");
+  }
   return total_size_kb;
+}
+
+/**
+ * @brief Executes the WhoAmICommand to retrieve and display the current user's information.
+ *
+ * This function retrieves the username and home directory of the current user
+ * by accessing the "USER" and "HOME" environment variables, respectively. If both
+ * variables are successfully retrieved, it prints the username and home directory
+ * to the standard output. If either variable cannot be retrieved, it prints an error
+ * message to the standard error output.
+ *
+ * @note This command relies on the presence of the "USER" and "HOME" environment variables.
+ *       If these variables are not set, the function will fail to retrieve the user information.
+ */
+void WhoAmICommand::execute() {
+  // apparently we cant use getenv(). well have to read /proc/<pid>/environ
+  // to get the USER and HOME environment variables
+  
+  // Construct the path to /proc/<pid>/environ
+  string environ_path = "/proc/" + to_string(getpid()) + "/environ";
+
+  // Open the environ file
+  int fd = open(environ_path.c_str(), O_RDONLY);
+  if (fd == -1) {
+    perror("smash error: open failed");
+    return;
+  }
+
+  // Read the contents of the environ file
+  char buffer[4096];
+  ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+  if (bytes_read == -1) {
+    perror("smash error: read failed");
+    if (close(fd) == -1) {
+      perror("smash error: close failed");
+    }
+    return;
+  }
+
+  // Null-terminate the buffer
+  buffer[bytes_read] = '\0';
+
+  // Close the file descriptor
+  if (close(fd) == -1) {
+    perror("smash error: close failed");
+    return;
+  }
+
+  // Parse the buffer to find USER and HOME
+  string user, home;
+  char* entry = buffer; // Start scanning from the beginning of the buffer
+  while (*entry != '\0') {
+    string env_entry(entry); // start scannin from current entry pointer until the next null terminator
+    size_t equal_pos = env_entry.find('=');
+    if (equal_pos != string::npos) {
+      string key = env_entry.substr(0, equal_pos);
+      string value = env_entry.substr(equal_pos + 1);
+
+      if (key == "USER") {
+        user = value;
+      } else if (key == "HOME") {
+        home = value;
+      }
+    }
+    entry += strlen(entry) + 1; // Move to the next entry
+  }
+
+  // Check if both USER and HOME were found
+  if (!user.empty() && !home.empty()) {
+    cout << user << " " << home << endl;
+  } else {
+    cerr << "smash error: whoami: failed to retrieve user information" << endl;
+  }
 }
