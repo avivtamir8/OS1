@@ -502,7 +502,9 @@ void QuitCommand::execute() {
       cout << job->getPid() << ": " << job->getCmdLine() << endl;
       if (kill(job->getPid(), SIGKILL) == -1) {
         perror("smash error: kill failed");
-        return;
+        // Even if killing a job fails, we should attempt to kill others and then exit.
+        // Depending on desired strictness, you might exit(1) here or just report.
+        // For now, let's continue and exit normally after attempting all.
       }
     }
 
@@ -511,7 +513,7 @@ void QuitCommand::execute() {
   }
 
   // Exit the shell
-  return;
+  exit(0); // This will terminate the smash process
 }
 
 /**
