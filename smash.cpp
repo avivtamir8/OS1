@@ -11,10 +11,6 @@ int main(int argc, char *argv[]) {
     }
     SmallShell &smash = SmallShell::getInstance();
 
-    // /* debug*/
-    // printSmashProcessGroup();
-    // // =================
-
     while (true) {
         std::cout << smash.getPrompt() << "> ";
         std::string cmd_line;
