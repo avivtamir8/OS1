@@ -130,6 +130,7 @@ SmallShell::SmallShell()
  * @return A pointer to the created Command object.
  */
 Command *SmallShell::CreateCommand(const char *cmd_line_cstr) {
+  string cmd_s_unedited = string(cmd_line_cstr);
   string cmd_s = _trim(string(cmd_line_cstr));
   regex alias_definition_regex("^alias [a-zA-Z0-9_]+='[^']*'$");
 
@@ -222,9 +223,9 @@ Command *SmallShell::CreateCommand(const char *cmd_line_cstr) {
   // Handle external commands
   else {
     if (cmd_s.find('?') != string::npos || cmd_s.find('*') != string::npos) {
-      return new ComplexExternalCommand(cmd_s.c_str(), jobs);
+      return new ComplexExternalCommand(cmd_s_unedited.c_str(), jobs);
     } else {
-      return new SimpleExternalCommand(cmd_s.c_str(), jobs);
+      return new SimpleExternalCommand(cmd_s_unedited.c_str(), jobs);
     }
   }
 }
@@ -258,7 +259,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
  * @param cmd_line_input The raw command line input as a C-string.
  */
 Command::Command(const char *cmd_line_input)
-  : cmd_line(_trim(string(cmd_line_input))), is_background(false), alias("") {
+  : cmd_line(_trim(string(cmd_line_input))), cmd_line_unedited(string(cmd_line_input)), is_background(false), alias("") {
   
   // Determine if the command is a background command
   is_background = _isBackgroundComamnd(cmd_line.c_str());
@@ -554,7 +555,7 @@ void KillCommand::execute() {
     cerr << "smash error: kill: invalid arguments" << endl;
     return;
   } catch (const out_of_range &e) {
-    cerr << "smash error: kill: invalid signal number" << endl;
+    cerr << "smash error: kill: invalid arguments" << endl;
     return;
   }
 
@@ -563,14 +564,14 @@ void KillCommand::execute() {
   try {
     jobId = stoi(args[2]);
     if (jobId <= 0) { // Validate job ID is positive
-      cerr << "smash error: kill: invalid job-id" << endl;
+      cerr << "smash error: kill: invalid arguments" << endl;
       return;
     }
   } catch (const invalid_argument &e) {
     cerr << "smash error: kill: invalid arguments" << endl;
     return;
   } catch (const out_of_range &e) {
-    cerr << "smash error: kill: invalid job-id" << endl;
+    cerr << "smash error: kill: invalid arguments" << endl;
     return;
   }
 
@@ -1153,7 +1154,7 @@ void SimpleExternalCommand::execute() {
       smash.clearForegroundPid(); // Clear the foreground PID after the process finishes
     } else {
       // Background execution: Add the job to the jobs list
-      jobs.addJob(cmd_line, pid);
+      jobs.addJob(cmd_line_unedited, pid);
     }
   }
 }
@@ -1203,7 +1204,7 @@ void ComplexExternalCommand::execute() {
       smash.clearForegroundPid(); // Clear the foreground PID after the process finishes
     } else {
       // Background execution: Add the job to the jobs list
-      jobs.addJob(cmd_line, pid);
+      jobs.addJob(cmd_line_unedited, pid);
     }
   }
 }

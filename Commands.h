@@ -21,6 +21,7 @@ using namespace std;
 class Command {
 protected:
     string cmd_line;
+    string cmd_line_unedited;
     vector<string> args;
     bool is_background;
     string alias;
