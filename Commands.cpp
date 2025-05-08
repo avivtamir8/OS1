@@ -442,6 +442,10 @@ void ForegroundCommand::execute() {
   }
 
   // Get the job using the determined effective_job_id_to_use
+  if (effective_job_id_to_use <= 0) { // Invalid job ID
+    cerr << "smash error: fg: invalid arguments" << endl;
+    return;
+  }
   JobsList::JobEntry *job = jobs.getJobById(effective_job_id_to_use);
 
   if (job == nullptr) {
