@@ -51,6 +51,7 @@ const string WHITESPACE = " \n\r\t\f\v";
 /*******************************************************
  *                 GIVEN UTILITIES                     *
  *******************************************************/
+
 // Utility functions for string trimming
 string _ltrim(const string &s) {
   size_t start = s.find_first_not_of(WHITESPACE);
@@ -470,113 +471,6 @@ void ForegroundCommand::execute() {
     smash.clearForegroundPid();
   }
   return;
-}
-
-/**
- * @brief Executes the QuitCommand to terminate the shell.
- * 
- * This function checks if the "kill" argument is provided. If so, it sends a SIGKILL signal
- * to all remaining jobs in the jobs list, prints their details, and clears the jobs list.
- * Finally, it exits the shell process.
- * 
- * @param None (uses the command-line arguments stored in the `args` member).
- * @return None (terminates the shell process).
- */
-void QuitCommand::execute() {
-  // Check if the "kill" argument is provided
-  bool killFlag = (args.size() > 1 && args[1] == "kill");
-
-  if (killFlag) {
-    // Remove finished jobs before killing
-    jobs.removeFinishedJobs();
-
-    // Get the list of remaining jobs
-    vector<JobsList::JobEntry*> remainingJobs = jobs.getJobs();
-
-    // Print the number of jobs to be killed
-    cout << "smash: sending SIGKILL signal to " << remainingJobs.size() << " jobs:" << endl;
-
-    // Iterate through the jobs and send SIGKILL
-    for (JobsList::JobEntry* job : remainingJobs) {
-      cout << job->getPid() << ": " << job->getCmdLine() << endl;
-      if (kill(job->getPid(), SIGKILL) == -1) {
-        perror("smash error: kill failed");
-        return;
-      }
-    }
-
-    // Clear the jobs list
-    jobs.clearJobs();
-  }
-
-  // Exit the shell
-  return;
-}
-
-/**
- * @brief Executes the KillCommand to send a signal to a specific job's process.
- * 
- * This function validates the input arguments, retrieves the job by its ID, and sends
- * the specified signal to the job's process. If the operation is successful, it prints
- * a confirmation message. Otherwise, it displays appropriate error messages.
- * 
- * @param None (uses the command-line arguments stored in the `args` member).
- * @return None (outputs success or error messages to standard output or error).
- */
-void KillCommand::execute() {
-  // Validate the number of arguments
-  if (args.size() != 3 || args[1][0] != '-') {
-    cerr << "smash error: kill: invalid arguments" << endl;
-    return;
-  }
-
-  // Parse the signal number
-  int signum;
-  try {
-    signum = stoi(args[1].substr(1)); // Remove the '-' and convert to integer
-    if (signum <= 0 || signum >= NSIG) { // Validate signal number range
-      cerr << "smash error: kill: invalid signal number" << endl;
-      return;
-    }
-  } catch (const invalid_argument &e) {
-    cerr << "smash error: kill: invalid arguments" << endl;
-    return;
-  } catch (const out_of_range &e) {
-    cerr << "smash error: kill: invalid signal number" << endl;
-    return;
-  }
-
-  // Parse the job ID
-  int jobId;
-  try {
-    jobId = stoi(args[2]);
-    if (jobId <= 0) { // Validate job ID is positive
-      cerr << "smash error: kill: invalid job-id" << endl;
-      return;
-    }
-  } catch (const invalid_argument &e) {
-    cerr << "smash error: kill: invalid arguments" << endl;
-    return;
-  } catch (const out_of_range &e) {
-    cerr << "smash error: kill: invalid job-id" << endl;
-    return;
-  }
-
-  // Find the job by ID
-  JobsList::JobEntry *job = jobs.getJobById(jobId);
-  if (!job) {
-    cerr << "smash error: kill: job-id " << jobId << " does not exist" << endl;
-    return;
-  }
-
-  // Send the signal to the job's process
-  if (kill(job->getPid(), signum) == -1) {
-    perror("smash error: kill failed");
-    return;
-  }
-
-  // Print success message
-  cout << "signal number " << signum << " was sent to pid " << job->getPid() << endl;
 }
 
 /**
