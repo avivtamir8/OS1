@@ -19,9 +19,5 @@ void ctrlCHandler(int sig_num) {
             std::cout << "smash: process " << fg_pid << " was killed" << std::endl;
         }
         smash.clearForegroundPid();
-    } else {
-        // If no foreground process, reprint the prompt
-        // need to flush the output to ensure the prompt appears immediately
-        std::cout << smash.getPrompt() << "> " << std::flush;
-    }
+    } 
 }
