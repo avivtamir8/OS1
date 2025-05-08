@@ -488,9 +488,6 @@ void QuitCommand::execute() {
   bool killFlag = (args.size() > 1 && args[1] == "kill");
 
   if (killFlag) {
-    // Remove finished jobs before killing
-    jobs.removeFinishedJobs();
-
     // Get the list of remaining jobs
     vector<JobsList::JobEntry*> remainingJobs = jobs.getJobs();
 
@@ -502,18 +499,12 @@ void QuitCommand::execute() {
       cout << job->getPid() << ": " << job->getCmdLine() << endl;
       if (kill(job->getPid(), SIGKILL) == -1) {
         perror("smash error: kill failed");
-        // Even if killing a job fails, we should attempt to kill others and then exit.
-        // Depending on desired strictness, you might exit(1) here or just report.
-        // For now, let's continue and exit normally after attempting all.
       }
     }
-
-    // Clear the jobs list
-    jobs.clearJobs();
   }
 
-  // Exit the shell
-  exit(0); // This will terminate the smash process
+  // Return from the function instead of exiting the shell process
+  return;
 }
 
 /**
