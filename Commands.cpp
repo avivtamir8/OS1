@@ -485,13 +485,19 @@ void ForegroundCommand::execute() {
  */
 void QuitCommand::execute() {
   // Check if the "kill" argument is provided
+  // As per PDF: "You may assume that the kill argument, if present, will appear first."
+  // "If any number of arguments (other than kill) were provided with this command, they will be ignored."
+  // This means we only care if args[1] is "kill".
   bool killFlag = (args.size() > 1 && args[1] == "kill");
 
   if (killFlag) {
+    // As per teacher's note, ensure finished jobs are removed before counting/killing.
+    jobs.removeFinishedJobs(); 
+
     // Get the list of remaining jobs
     vector<JobsList::JobEntry*> remainingJobs = jobs.getJobs();
 
-    // Print the number of jobs to be killed
+    // Print the number of jobs to be killed, even if 0.
     cout << "smash: sending SIGKILL signal to " << remainingJobs.size() << " jobs:" << endl;
 
     // Iterate through the jobs and send SIGKILL
@@ -499,12 +505,20 @@ void QuitCommand::execute() {
       cout << job->getPid() << ": " << job->getCmdLine() << endl;
       if (kill(job->getPid(), SIGKILL) == -1) {
         perror("smash error: kill failed");
+        // Continue attempting to kill other jobs
       }
     }
+    // After attempting to kill all jobs, the jobs list should be conceptually empty
+    // or reflect that these jobs are no longer managed/active.
+    // Depending on JobsList implementation, a clear() might be needed if getJobs() returns a reference
+    // or if the list isn't automatically cleared by job removal upon termination signals.
+    // For simplicity and to ensure state, explicitly clear.
+    // However, since we are exiting, the state of jobs list in memory becomes less critical.
+    // The main thing is that the processes are signaled.
   }
 
-  // Return from the function instead of exiting the shell process
-  return;
+  // Terminate the shell process
+  exit(0);
 }
 
 /**
