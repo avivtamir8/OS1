@@ -1380,14 +1380,12 @@ void PipeCommand::execute() {
     int target_fd_for_cmd1_output = error_mode ? STDERR_FILENO : STDOUT_FILENO;
     if (dup2(pipe_fd[1], target_fd_for_cmd1_output) == -1) {
       perror("smash error: dup2 failed");
-      if (close(pipe_fd[0]) == -1) {
-        perror("smash error: close failed");
-      }    
-      if (close(pipe_fd[1]) == -1) {
-        perror("smash error: close failed");
-      }
-      return;
+      // Ensure pipe ends are closed before exiting
+      close(pipe_fd[0]); 
+      close(pipe_fd[1]);
+      exit(1); // Exit child process on error
     }
+    // Close unused pipe ends
     if (close(pipe_fd[0]) == -1) {
       perror("smash error: close failed");
     }    
@@ -1395,7 +1393,7 @@ void PipeCommand::execute() {
       perror("smash error: close failed");
     }
     smash.executeCommand(command_1.c_str());
-    return;
+    exit(0); // Ensure child process exits after execution
   }
 
   // Fork the second child process
@@ -1418,14 +1416,12 @@ void PipeCommand::execute() {
     setpgrp();
     if (dup2(pipe_fd[0], STDIN_FILENO) == -1) {
       perror("smash error: dup2 failed");
-      if (close(pipe_fd[0]) == -1) {
-        perror("smash error: close failed");
-      }    
-      if (close(pipe_fd[1]) == -1) {
-        perror("smash error: close failed");
-      }
-      return;
+      // Ensure pipe ends are closed before exiting
+      close(pipe_fd[0]);
+      close(pipe_fd[1]);
+      exit(1); // Exit child process on error
     }
+    // Close unused pipe ends
     if (close(pipe_fd[0]) == -1) {
       perror("smash error: close failed");
     }    
@@ -1433,7 +1429,7 @@ void PipeCommand::execute() {
       perror("smash error: close failed");
     }
     smash.executeCommand(command_2.c_str());
-    return;
+    exit(0); // Ensure child process exits after execution
   }
 
   // Parent process: Close pipe and wait for both children
