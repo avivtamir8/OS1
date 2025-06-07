@@ -657,7 +657,7 @@ void AliasCommand::execute() {
 
   // Check for reserved keywords
   static const set<string> reservedKeywords = {
-    "quit", "fg", "bg", "jobs", "kill", "cd", "listdir", "chprompt", "alias", "unalias", "pwd", "showpid"
+    "quit", "fg", "bg", "jobs", "kill", "cd", "listdir", "chprompt", "alias", "unalias", "pwd", "showpid", "du", "whoami", "watchproc", "unsetenv"
     // "listdir" might be an example, ensure this list matches your actual built-in commands.
     // Added "bg" as it's a common shell command, though not explicitly in the PDF's list for this homework.
     // For safety, stick to the PDF's examples or your implemented commands.
